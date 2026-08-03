@@ -1,0 +1,18 @@
+[Unit]
+Description=Whipped Wisps cake order/archive app
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/whippedwisps/server
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=DB_PATH=/home/pi/whippedwisps-data/whippedwisps.db
+Environment=UPLOADS_DIR=/home/pi/whippedwisps-data/uploads
+EnvironmentFile=/home/pi/whippedwisps-data/secrets.env
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+User=pi
+
+[Install]
+WantedBy=multi-user.target
