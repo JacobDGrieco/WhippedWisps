@@ -48,6 +48,7 @@ function mergeTagNames(...tagGroups) {
 function getAutomaticOrderTags(order) {
 	return mergeTagNames((order.orderItems || []).flatMap((item) => [
 		item.type,
+		item.theme,
 		item.flavors,
 		item.dimensions,
 		...(item.tierDetails || []).flatMap((tier) => [
@@ -85,12 +86,18 @@ function addCalendarWarning(payload, calendarResult) {
 	return payload;
 }
 
+function getCalendarErrorSummary(error) {
+	const status = error?.status || error?.code || error?.response?.status;
+	const message = error?.errors?.[0]?.message || error?.response?.data?.error?.message || error?.message;
+	return [status ? `status ${status}` : null, message].filter(Boolean).join(': ') || 'Unknown Calendar API error';
+}
+
 async function trySync(order) {
 	try {
 		await syncOrderToCalendar(order);
 		return {};
 	} catch (error) {
-		console.error('Calendar sync failed:', error);
+		console.error(`Calendar sync failed: ${getCalendarErrorSummary(error)}`);
 		return { error: 'Calendar sync failed. The order was saved locally.' };
 	}
 }
@@ -100,7 +107,7 @@ async function tryDeleteCalendar(order) {
 		await deleteOrderFromCalendar(order);
 		return {};
 	} catch (error) {
-		console.error('Calendar delete failed:', error);
+		console.error(`Calendar delete failed: ${getCalendarErrorSummary(error)}`);
 		return { error: 'Calendar delete failed. The order was deleted locally.' };
 	}
 }

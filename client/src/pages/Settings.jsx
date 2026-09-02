@@ -4,6 +4,7 @@ import * as api from '../api/client.js';
 export default function Settings() {
 	const [status, setStatus] = useState(null);
 	const [error, setError] = useState('');
+	const [isDisconnecting, setIsDisconnecting] = useState(false);
 
 	useEffect(() => {
 		api.fetchCalendarStatus().then(setStatus).catch((err) => setError(err.message));
@@ -11,10 +12,25 @@ export default function Settings() {
 
 	async function connectCalendar() {
 		try {
+			setError('');
 			const { url } = await api.fetchCalendarAuthUrl();
 			window.location.href = url;
 		} catch (err) {
 			setError(err.message);
+		}
+	}
+
+	async function disconnectCalendar() {
+		setIsDisconnecting(true);
+		setError('');
+
+		try {
+			const nextStatus = await api.disconnectCalendar();
+			setStatus(nextStatus);
+		} catch (err) {
+			setError(err.message);
+		} finally {
+			setIsDisconnecting(false);
 		}
 	}
 
@@ -33,6 +49,16 @@ export default function Settings() {
 				{status?.connected ? <p className="notice">Connected</p> : null}
 				{status?.configured && !status.connected ? (
 					<button type="button" className="primary-action" onClick={connectCalendar}>Connect Google Calendar</button>
+				) : null}
+				{status?.connected ? (
+					<button
+						type="button"
+						className="secondary-action text-danger"
+						onClick={disconnectCalendar}
+						disabled={isDisconnecting}
+					>
+						{isDisconnecting ? 'Disconnecting...' : 'Disconnect Google Calendar'}
+					</button>
 				) : null}
 			</section>
 		</div>

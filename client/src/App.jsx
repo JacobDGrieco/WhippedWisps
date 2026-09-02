@@ -11,8 +11,7 @@ export default function App() {
 		<div className="app-shell">
 			<header className="topbar">
 				<div>
-					<p className="eyebrow">Whipped Wisps</p>
-					<h1>Cake Orders</h1>
+					<h1>Whipped Wisps</h1>
 				</div>
 				<nav aria-label="Primary">
 					<NavLink to="/">Schedule</NavLink>

@@ -14,6 +14,8 @@ function localDateParts(dateText) {
 export default function CalendarGrid({ orders, month, onMonthChange }) {
 	const year = month.getFullYear();
 	const monthIndex = month.getMonth();
+	const today = new Date();
+	const isCurrentMonth = today.getFullYear() === year && today.getMonth() === monthIndex;
 	const firstWeekday = new Date(year, monthIndex, 1).getDay();
 	const totalDays = daysInMonth(year, monthIndex);
 	const ordersByDay = new Map();
@@ -51,18 +53,21 @@ export default function CalendarGrid({ orders, month, onMonthChange }) {
 				))}
 			</div>
 			<div className="calendar-cells">
-				{cells.map((day, index) => (
-					<div key={`${day || 'blank'}-${index}`} className="calendar-cell">
-						{day ? <span className="day-number">{day}</span> : null}
-						{day
-							? (ordersByDay.get(day) || []).map((order) => (
-								<Link key={order.id} to={`/orders/${order.id}`} className="calendar-order">
-									{order.theme || order.customerName}
-								</Link>
-							))
-							: null}
-					</div>
-				))}
+				{cells.map((day, index) => {
+					const isToday = isCurrentMonth && day === today.getDate();
+					return (
+						<div key={`${day || 'blank'}-${index}`} className={`calendar-cell${isToday ? ' is-today' : ''}`}>
+							{day ? <span className="day-number">{day}</span> : null}
+							{day
+								? (ordersByDay.get(day) || []).map((order) => (
+									<Link key={order.id} to={`/orders/${order.id}`} className="calendar-order">
+										{order.theme || order.customerName}
+									</Link>
+								))
+								: null}
+						</div>
+					);
+				})}
 			</div>
 		</section>
 	);

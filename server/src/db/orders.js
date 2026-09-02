@@ -126,6 +126,33 @@ function normalizeOrderInput(data) {
 	};
 }
 
+function normalizeThemeName(theme) {
+	return String(theme || '').trim().replace(/\s+/g, ' ');
+}
+
+export function listThemes() {
+	const rows = getDb().prepare(`
+		SELECT theme FROM orders WHERE theme IS NOT NULL AND trim(theme) != ''
+		UNION ALL
+		SELECT theme FROM order_items WHERE theme IS NOT NULL AND trim(theme) != ''
+	`).all();
+	const seen = new Set();
+
+	return rows
+		.map((row) => normalizeThemeName(row.theme))
+		.filter(Boolean)
+		.filter((theme) => {
+			const key = theme.toLowerCase();
+			if (seen.has(key)) {
+				return false;
+			}
+
+			seen.add(key);
+			return true;
+		})
+		.sort((firstTheme, secondTheme) => firstTheme.localeCompare(secondTheme, undefined, { sensitivity: 'base' }));
+}
+
 export function createOrder(data) {
 	const db = getDb();
 	const slug = generateSlug(data, existingSlugs(db));
@@ -219,6 +246,12 @@ export function updateOrder(id, data) {
 
 export function setOrderGoogleEventId(id, googleEventId) {
 	return updateOrder(id, { googleEventId });
+}
+
+export function clearOrderGoogleEventIds() {
+	return getDb()
+		.prepare("UPDATE orders SET google_event_id = NULL, updated_at = datetime('now') WHERE google_event_id IS NOT NULL")
+		.run().changes;
 }
 
 export function archiveOrder(id) {

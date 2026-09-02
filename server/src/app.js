@@ -1,3 +1,4 @@
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
@@ -10,10 +11,29 @@ import photoRoutes, { getUploadsDir } from './routes/photos.js';
 import recipeRoutes from './routes/recipes.js';
 import orderRecipeRoutes from './routes/orderRecipes.js';
 import settingsCalendarRoutes from './routes/settingsCalendar.js';
+import { listThemes } from './db/orders.js';
 import { listTags } from './db/tags.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+
+function mergeCatalogNames(...catalogs) {
+	const seen = new Set();
+	return catalogs
+		.flat()
+		.map((name) => String(name || '').trim().replace(/\s+/g, ' '))
+		.filter(Boolean)
+		.filter((name) => {
+			const key = name.toLowerCase();
+			if (seen.has(key)) {
+				return false;
+			}
+
+			seen.add(key);
+			return true;
+		})
+		.sort((firstName, secondName) => firstName.localeCompare(secondName, undefined, { sensitivity: 'base' }));
+}
 
 export function createApp() {
 	getDb();
@@ -34,7 +54,10 @@ export function createApp() {
 	app.use('/api/orders', orderRoutes);
 	app.use('/api/recipes', recipeRoutes);
 	app.get('/api/tags', (req, res) => {
-		res.json(listTags());
+		res.json(mergeCatalogNames(listTags(), listThemes()));
+	});
+	app.get('/api/themes', (req, res) => {
+		res.json(listThemes());
 	});
 	app.use('/api/settings/calendar', settingsCalendarRoutes);
 	app.use('/api', notFound);

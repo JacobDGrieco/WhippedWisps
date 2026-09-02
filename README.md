@@ -12,6 +12,8 @@ npm run dev:client
 
 The Vite app runs on `http://localhost:5173` and proxies `/api` plus `/uploads` to the Express server on port `3001`.
 
+For local Google Calendar testing, put the Google variables in a repo-root `.env` file. The server loads that file automatically when it starts. If Vite runs on a port other than `5173`, also set `CLIENT_ORIGIN`, for example `CLIENT_ORIGIN=http://localhost:5174`.
+
 ## Runtime Data
 
 Set these environment variables in production:

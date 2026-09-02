@@ -7,6 +7,7 @@ import {
 	createOrder,
 	deleteOrder,
 	getOrderById,
+	listThemes,
 	listOrders,
 	searchArchivedOrders,
 	updateOrder
@@ -74,6 +75,21 @@ test('createOrder stores multiple order items', () => {
 		{ type: 'cake', theme: 'floral', dimensions: '8 inch', servings: '12', flavors: 'vanilla', price: 80 },
 		{ type: 'cupcakes', theme: 'sprinkles', dimensions: null, servings: null, count: 24, flavors: 'chocolate', price: 60 }
 	]);
+});
+
+test('listThemes returns a distinct pool from order and item themes', () => {
+	createOrder({
+		customerName: 'Jane',
+		theme: 'Dinosaur Jungle',
+		dueDate: '2026-09-01',
+		orderItems: [
+			{ type: 'cake', theme: 'dinosaur jungle', flavors: 'vanilla' },
+			{ type: 'cupcakes', theme: 'Leaf Toppers', flavors: 'chocolate' }
+		]
+	});
+	createOrder({ customerName: 'Sam', theme: 'Space Race', dueDate: '2026-09-02' });
+
+	expect(listThemes()).toEqual(['Dinosaur Jungle', 'Leaf Toppers', 'Space Race']);
 });
 
 test('createOrder stores tiered cake details and custom other notes', () => {

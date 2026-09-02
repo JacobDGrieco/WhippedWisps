@@ -1,18 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import * as api from '../api/client.js';
 import NeededItemsChecklist from '../components/NeededItemsChecklist.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import RecipeAttach from '../components/RecipeAttach.jsx';
 import TagInput from '../components/TagInput.jsx';
+import ThemeInput from '../components/ThemeInput.jsx';
 
 const ITEM_TYPES = ['cake', 'tiered cake', 'cupcakes', 'cake pops', 'cookies', 'other'];
 const COUNTED_ITEM_TYPES = new Set(['cupcakes', 'cake pops', 'cookies']);
 const COMMON_DIMENSIONS = ['4"', '6"', '8"', '10"', '12"', '1/4 sheet', '1/2 sheet', 'full sheet'];
-const COMMON_FLAVORS = ['vanilla', 'chocolate', 'red velvet', 'funfetti', 'strawberry', 'lemon', 'marble', 'carrot', 'cookies and cream', 'almond', 'coconut', 'spice'];
+const COMMON_FLAVORS = ['vanilla', 'chocolate', 'chocolate chip', 'red velvet', 'funfetti', 'strawberry', 'lemon', 'marble', 'carrot', 'cookies and cream', 'almond', 'coconut', 'spice'];
 const MINUTES_PER_DAY = 1440;
 const DEFAULT_REMINDER_DAYS = 2;
 const DEFAULT_REMINDER_OFFSETS = [DEFAULT_REMINDER_DAYS * MINUTES_PER_DAY];
+
+function getTodayDateInputValue() {
+	const today = new Date();
+	const timezoneOffsetMs = today.getTimezoneOffset() * 60 * 1000;
+	return new Date(today.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
 
 function optionsWithCurrent(options, value) {
 	return value && !options.includes(value) ? [value, ...options] : options;
@@ -25,11 +32,20 @@ function titleCaseOption(value) {
 		.join(' ');
 }
 
-function SelectField({ label, placeholder, value, options, onChange, className = '' }) {
+function RequiredLabel({ children, required = false }) {
+	return (
+		<span>
+			{children}
+			{required ? <span className="required-mark" aria-hidden="true">*</span> : null}
+		</span>
+	);
+}
+
+function SelectField({ label, placeholder, value, options, onChange, className = '', required = false }) {
 	return (
 		<label className={`field ${className}`.trim()}>
-			<span>{label}</span>
-			<select value={value || ''} onChange={(event) => onChange(event.target.value)}>
+			<RequiredLabel required={required}>{label}</RequiredLabel>
+			<select required={required} value={value || ''} onChange={(event) => onChange(event.target.value)}>
 				<option value="">{placeholder}</option>
 				{optionsWithCurrent(options, value).map((option) => (
 					<option key={option} value={option}>{titleCaseOption(option)}</option>
@@ -153,9 +169,21 @@ function mergeTagSuggestions(currentSuggestions, nextTags) {
 		});
 }
 
+function getOrderThemes(order) {
+	return mergeTagSuggestions([], [
+		order.theme,
+		...(order.orderItems || []).map((item) => item.theme)
+	]);
+}
+
+function getPrimaryOrderTheme(order) {
+	return (order.orderItems || []).find((item) => item.theme?.trim())?.theme || order.theme || '';
+}
+
 function getAutomaticOrderTags(order) {
 	const itemTags = (order.orderItems || []).flatMap((item) => [
 		item.type ? titleCaseOption(item.type) : '',
+		item.theme ? titleCaseOption(item.theme) : '',
 		item.flavors ? titleCaseOption(item.flavors) : '',
 		item.dimensions ? titleCaseOption(item.dimensions) : '',
 		...(item.tierDetails || []).flatMap((tier) => [
@@ -176,20 +204,25 @@ export default function OrderForm() {
 	const { id } = useParams();
 	const navigate = useNavigate();
 	const isNew = !id;
-	const [order, setOrder] = useState(EMPTY_ORDER);
+	const [order, setOrder] = useState(() => ({ ...EMPTY_ORDER, orderDate: getTodayDateInputValue() }));
 	const [error, setError] = useState('');
 	const [notice, setNotice] = useState('');
 	const [isSaving, setIsSaving] = useState(false);
 	const [tagSuggestions, setTagSuggestions] = useState([]);
+	const [themeSuggestions, setThemeSuggestions] = useState([]);
 	const lockedTags = useMemo(() => getAutomaticOrderTags(order), [order]);
 	const availableTagSuggestions = useMemo(
-		() => mergeTagSuggestions(tagSuggestions, lockedTags),
-		[lockedTags, tagSuggestions]
+		() => mergeTagSuggestions(mergeTagSuggestions(tagSuggestions, themeSuggestions), lockedTags),
+		[lockedTags, tagSuggestions, themeSuggestions]
+	);
+	const availableThemeSuggestions = useMemo(
+		() => mergeTagSuggestions(themeSuggestions, getOrderThemes(order)),
+		[order, themeSuggestions]
 	);
 
 	useEffect(() => {
 		if (isNew) {
-			setOrder({ ...EMPTY_ORDER, orderItems: [createBlankOrderItem()] });
+			setOrder({ ...EMPTY_ORDER, orderDate: getTodayDateInputValue(), orderItems: [createBlankOrderItem()] });
 			return;
 		}
 
@@ -202,6 +235,12 @@ export default function OrderForm() {
 		api.fetchTags()
 			.then((tags) => setTagSuggestions(mergeTagSuggestions([], tags)))
 			.catch(() => setTagSuggestions([]));
+	}, []);
+
+	useEffect(() => {
+		api.fetchThemes()
+			.then((themes) => setThemeSuggestions(mergeTagSuggestions([], themes)))
+			.catch(() => setThemeSuggestions([]));
 	}, []);
 
 	function updateField(field, value) {
@@ -329,7 +368,7 @@ export default function OrderForm() {
 				deliveryAddress: order.deliveryAddress,
 				deliveryWindowStart: order.deliveryWindowStart,
 				deliveryWindowEnd: order.deliveryWindowEnd,
-				theme: order.theme,
+				theme: getPrimaryOrderTheme({ ...order, orderItems }),
 				description: order.description,
 				orderItems,
 				dimensions: firstItem.dimensions || '',
@@ -346,9 +385,12 @@ export default function OrderForm() {
 			}
 
 			setTagSuggestions((current) => mergeTagSuggestions(current, saved.tags));
+			setThemeSuggestions((current) => mergeTagSuggestions(current, getOrderThemes(saved)));
 			setOrder({ ...EMPTY_ORDER, ...saved, orderItems: normalizeOrderItems(saved) });
 			if (isNew) {
-				navigate(`/orders/${saved.id}`, { replace: true });
+				navigate('/', { replace: true });
+			} else if (saved.status === 'archived') {
+				navigate(`/archive/${saved.slug}`, { replace: true });
 			}
 		} catch (err) {
 			setError(err.message);
@@ -373,15 +415,24 @@ export default function OrderForm() {
 		setNotice(synced.calendarSyncError || 'Calendar sync requested.');
 	}
 
+	function handleBack() {
+		if (window.history.length > 1) {
+			navigate(-1);
+			return;
+		}
+
+		navigate('/');
+	}
+
 	return (
 		<form className="order-form page-grid" onSubmit={handleSubmit}>
 			<section className="page-heading">
 				<div>
 					<p className="eyebrow">{isNew ? 'New order' : order.status}</p>
-					<h2>{isNew ? 'Create Order' : order.theme || 'Order Detail'}</h2>
+					<h2>{isNew ? 'Create Order' : getPrimaryOrderTheme(order) || 'Order Detail'}</h2>
 				</div>
 				<div className="button-row">
-					<Link className="secondary-action" to="/">Back</Link>
+					<button type="button" className="secondary-action" onClick={handleBack}>Back</button>
 					<button type="submit" className="primary-action" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</button>
 				</div>
 			</section>
@@ -395,7 +446,7 @@ export default function OrderForm() {
 				</div>
 				<div className="form-row two-fields">
 					<label className="field">
-						<span>Customer Name</span>
+						<RequiredLabel required>Customer Name</RequiredLabel>
 						<input required value={order.customerName || ''} onChange={(event) => updateField('customerName', event.target.value)} />
 					</label>
 					<label className="field">
@@ -403,20 +454,14 @@ export default function OrderForm() {
 						<input value={order.customerContact || ''} onChange={(event) => updateField('customerContact', event.target.value)} />
 					</label>
 				</div>
-				<div className="form-row two-fields">
+				<div className="form-row date-fields">
 					<label className="field">
 						<span>Order Date</span>
 						<input type="date" value={order.orderDate || ''} onChange={(event) => updateField('orderDate', event.target.value)} />
 					</label>
 					<label className="field">
-						<span>Due Date</span>
+						<RequiredLabel required>Due Date</RequiredLabel>
 						<input required type="date" value={order.dueDate || ''} onChange={(event) => updateField('dueDate', event.target.value)} />
-					</label>
-				</div>
-				<div className="form-row two-fields">
-					<label className="field">
-						<span>Theme</span>
-						<input value={order.theme || ''} onChange={(event) => updateField('theme', event.target.value)} />
 					</label>
 					<label className="field">
 						<span>Due Time</span>
@@ -470,8 +515,8 @@ export default function OrderForm() {
 						<article key={item.id || index} className="order-item-card">
 							<div className="order-item-card-header">
 								<label className="field">
-									<span>Type</span>
-									<select value={item.type || ''} onChange={(event) => updateOrderItemType(index, event.target.value)}>
+									<RequiredLabel required={index === 0}>Type</RequiredLabel>
+									<select required={index === 0} value={item.type || ''} onChange={(event) => updateOrderItemType(index, event.target.value)}>
 										<option value="" disabled>- Type -</option>
 										{ITEM_TYPES.map((type) => <option key={type} value={type}>{titleCaseOption(type)}</option>)}
 									</select>
@@ -481,8 +526,8 @@ export default function OrderForm() {
 							<div className="order-item-fields">
 								{item.type === 'tiered cake' ? (
 									<label className="field tiers-field">
-										<span>Tiers</span>
-										<input type="number" min="0" step="1" value={item.tierCount ?? ''} onChange={(event) => updateTierCount(index, event.target.value)} />
+										<RequiredLabel required={index === 0}>Tiers</RequiredLabel>
+										<input required={index === 0} type="number" min="0" step="1" value={item.tierCount ?? ''} onChange={(event) => updateTierCount(index, event.target.value)} />
 									</label>
 								) : null}
 								{item.type !== 'other' && item.type !== 'tiered cake' ? (
@@ -492,6 +537,7 @@ export default function OrderForm() {
 										value={item.flavors || ''}
 										options={COMMON_FLAVORS}
 										className="flavor-field"
+										required={index === 0}
 										onChange={(value) => updateOrderItem(index, 'flavors', value)}
 									/>
 								) : null}
@@ -502,14 +548,16 @@ export default function OrderForm() {
 										value={item.dimensions || ''}
 										options={COMMON_DIMENSIONS}
 										className="dimension-field"
+										required={index === 0}
 										onChange={(value) => updateOrderItem(index, 'dimensions', value)}
 									/>
 								) : null}
 								{['cake', 'tiered cake'].includes(item.type) ? (
 									<>
 										<label className="field servings-field">
-											<span>Servings</span>
+											<RequiredLabel required={index === 0}>Servings</RequiredLabel>
 											<input
+												required={index === 0}
 												type="number"
 												min="0"
 												step="1"
@@ -522,20 +570,24 @@ export default function OrderForm() {
 								) : null}
 								{COUNTED_ITEM_TYPES.has(item.type) ? (
 									<label className="field servings-field">
-										<span>Count</span>
-										<input type="number" min="0" step="1" value={item.count ?? ''} onChange={(event) => updateOrderItem(index, 'count', event.target.value)} />
+										<RequiredLabel required={index === 0}>Count</RequiredLabel>
+										<input required={index === 0} type="number" min="0" step="1" value={item.count ?? ''} onChange={(event) => updateOrderItem(index, 'count', event.target.value)} />
 									</label>
 								) : null}
 								{item.type !== 'other' ? (
-									<label className="field theme-field">
-										<span>Theme</span>
-										<input value={item.theme || ''} onChange={(event) => updateOrderItem(index, 'theme', event.target.value)} />
-									</label>
+									<ThemeInput
+										required={index === 0}
+										value={item.theme || ''}
+										suggestions={availableThemeSuggestions}
+										className="theme-field"
+										placeholder="Choose theme"
+										onChange={(value) => updateOrderItem(index, 'theme', value)}
+									/>
 								) : null}
 								{item.type === 'other' ? (
 									<label className="field wide-field">
-										<span>Notes</span>
-										<input value={item.notes || ''} onChange={(event) => updateOrderItem(index, 'notes', event.target.value)} />
+										<RequiredLabel required={index === 0}>Notes</RequiredLabel>
+										<input required={index === 0} value={item.notes || ''} onChange={(event) => updateOrderItem(index, 'notes', event.target.value)} />
 									</label>
 								) : null}
 								<label className="field price-field">
@@ -554,6 +606,7 @@ export default function OrderForm() {
 												value={tier.flavors || ''}
 												options={COMMON_FLAVORS}
 												className="flavor-field"
+												required={index === 0}
 												onChange={(value) => updateTierDetail(index, tierIndex, 'flavors', value)}
 											/>
 											<SelectField
@@ -562,6 +615,7 @@ export default function OrderForm() {
 												value={tier.dimensions || ''}
 												options={COMMON_DIMENSIONS}
 												className="dimension-field"
+												required={index === 0}
 												onChange={(value) => updateTierDetail(index, tierIndex, 'dimensions', value)}
 											/>
 										</div>

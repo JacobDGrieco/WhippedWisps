@@ -138,6 +138,14 @@ export function fetchCalendarAuthUrl() {
 	return request('/api/settings/calendar/auth-url');
 }
 
+export function disconnectCalendar() {
+	return request('/api/settings/calendar/connection', { method: 'DELETE' });
+}
+
 export function fetchTags() {
 	return request('/api/tags');
+}
+
+export function fetchThemes() {
+	return request('/api/themes');
 }

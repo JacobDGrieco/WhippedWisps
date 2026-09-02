@@ -6,9 +6,10 @@
 		"client"
 	],
 	"scripts": {
-		"dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+		"dev": "concurrently --kill-others-on-fail \"npm run dev:server\" \"npm run dev:client:ready\"",
 		"dev:server": "npm run dev -w server",
 		"dev:client": "npm run dev -w client",
+		"dev:client:ready": "node scripts/wait-for-server.js http://127.0.0.1:3001/api/health && npm run dev:client",
 		"test:server": "npm run test -w server",
 		"build:client": "npm run build -w client"
 	},
@@ -16,4 +17,3 @@
 		"concurrently": "^10.0.4"
 	}
 }
-cocoa bombs

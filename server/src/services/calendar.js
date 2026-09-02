@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
-import { getSetting, setSetting } from '../db/settings.js';
-import { setOrderGoogleEventId } from '../db/orders.js';
+import { deleteSetting, getSetting, setSetting } from '../db/settings.js';
+import { clearOrderGoogleEventIds, setOrderGoogleEventId } from '../db/orders.js';
 
 const TOKEN_KEY = 'google.refreshToken';
 const CALENDAR_ID_KEY = 'google.calendarId';
@@ -63,6 +63,21 @@ export function isCalendarConnected() {
 	return Boolean(hasGoogleConfig() && getSetting(TOKEN_KEY));
 }
 
+export function disconnectCalendarAccount() {
+	const hadRefreshToken = deleteSetting(TOKEN_KEY);
+	deleteSetting(CALENDAR_ID_KEY);
+	const clearedEventCount = clearOrderGoogleEventIds();
+
+	return {
+		disconnected: hadRefreshToken,
+		clearedEventCount
+	};
+}
+
+function isGoogleNotFoundError(error) {
+	return error?.code === 404 || error?.status === 404 || error?.response?.status === 404;
+}
+
 function formatTime(date, time) {
 	if (!time) {
 		return { date };
@@ -75,31 +90,69 @@ function formatTime(date, time) {
 	};
 }
 
-function formatOrderItem(item) {
+function titleCase(value) {
+	return String(value || '')
+		.trim()
+		.replace(/\s+/g, ' ')
+		.split(' ')
+		.map((word) => (word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}` : word))
+		.join(' ');
+}
+
+function formatServings(servings) {
+	if (!servings) {
+		return null;
+	}
+
+	return /servings?/i.test(servings) ? servings : `${servings} servings`;
+}
+
+function formatTheme(theme) {
+	return theme ? `Theme: ${titleCase(theme)}` : null;
+}
+
+function formatBasicOrderItem(item) {
+	return [
+		titleCase(item.type || 'Item'),
+		item.flavors ? titleCase(item.flavors) : null,
+		item.dimensions,
+		formatServings(item.servings),
+		item.count || item.count === 0 ? `${item.count} count` : null,
+		formatTheme(item.theme),
+		item.notes ? `Notes: ${item.notes}` : null
+	].filter(Boolean).join(', ');
+}
+
+function formatTierDetails(tier) {
+	return [
+		tier.flavors ? titleCase(tier.flavors) : null,
+		tier.dimensions
+	].filter(Boolean).join(', ');
+}
+
+function formatTieredOrderItem(item) {
 	const tierDetails = Array.isArray(item.tierDetails) ? item.tierDetails : [];
-	const details = [
-		item.theme ? `theme ${item.theme}` : null,
-		item.dimensions ? `dimensions ${item.dimensions}` : null,
-		item.servings ? `${item.servings} servings` : null,
-		item.count || item.count === 0 ? `count ${item.count}` : null,
-		item.flavors ? `flavors ${item.flavors}` : null,
-		item.notes ? `notes ${item.notes}` : null,
-		item.price || item.price === 0 ? `$${Number(item.price).toFixed(2)}` : null
-	].filter(Boolean);
-	const label = item.type || 'Item';
+	const tierCount = item.tierCount || tierDetails.length;
+	const summary = [
+		titleCase(item.type || 'Tiered Cake'),
+		tierCount ? `${tierCount} ${tierCount === 1 ? 'tier' : 'tiers'}` : null,
+		formatServings(item.servings),
+		formatTheme(item.theme),
+		item.notes ? `Notes: ${item.notes}` : null
+	].filter(Boolean).join(', ');
 	const tiers = tierDetails
-		.map((tier, index) => {
-			const tierParts = [
-				tier.dimensions ? `dimensions ${tier.dimensions}` : null,
-				tier.flavors ? `flavors ${tier.flavors}` : null
-			].filter(Boolean);
-
-			return tierParts.length ? `tier ${index + 1} ${tierParts.join(', ')}` : null;
-		})
+		.map(formatTierDetails)
 		.filter(Boolean);
-	const allDetails = [...details, ...tiers];
 
-	return allDetails.length ? `${label}: ${allDetails.join(', ')}` : label;
+	return [summary, ...tiers.map((tier) => `  - ${tier}`)].join('\n');
+}
+
+function formatOrderItem(item) {
+	if (item.type === 'tiered cake') {
+		return formatTieredOrderItem(item);
+	}
+
+	return formatBasicOrderItem(item);
 }
 
 function formatOrderItems(order) {
@@ -150,7 +203,11 @@ export function buildCalendarEventPayload(order) {
 	};
 }
 
-async function getOrdersCalendarId(calendar) {
+async function getOrdersCalendarId(calendar, { refreshCachedCalendar = false } = {}) {
+	if (refreshCachedCalendar) {
+		deleteSetting(CALENDAR_ID_KEY);
+	}
+
 	const existingCalendarId = getSetting(CALENDAR_ID_KEY);
 	if (existingCalendarId) {
 		return existingCalendarId;
@@ -174,6 +231,27 @@ async function getOrdersCalendarId(calendar) {
 	return created.data.id;
 }
 
+async function insertOrderEvent(calendar, requestBody) {
+	const calendarId = await getOrdersCalendarId(calendar);
+
+	try {
+		return await calendar.events.insert({
+			calendarId,
+			requestBody
+		});
+	} catch (error) {
+		if (!isGoogleNotFoundError(error)) {
+			throw error;
+		}
+
+		const refreshedCalendarId = await getOrdersCalendarId(calendar, { refreshCachedCalendar: true });
+		return calendar.events.insert({
+			calendarId: refreshedCalendarId,
+			requestBody
+		});
+	}
+}
+
 export async function syncOrderToCalendar(order) {
 	if (!isCalendarConnected()) {
 		return { skipped: true };
@@ -185,18 +263,21 @@ export async function syncOrderToCalendar(order) {
 	const requestBody = buildCalendarEventPayload(order);
 
 	if (order.googleEventId) {
-		await calendar.events.update({
-			calendarId,
-			eventId: order.googleEventId,
-			requestBody
-		});
-		return { synced: true, eventId: order.googleEventId };
+		try {
+			await calendar.events.update({
+				calendarId,
+				eventId: order.googleEventId,
+				requestBody
+			});
+			return { synced: true, eventId: order.googleEventId };
+		} catch (error) {
+			if (!isGoogleNotFoundError(error)) {
+				throw error;
+			}
+		}
 	}
 
-	const created = await calendar.events.insert({
-		calendarId,
-		requestBody
-	});
+	const created = await insertOrderEvent(calendar, requestBody);
 	const eventId = created.data.id;
 	if (eventId) {
 		setOrderGoogleEventId(order.id, eventId);

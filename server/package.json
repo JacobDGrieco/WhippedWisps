@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
+    "dev": "node --no-deprecation --watch src/server.js",
+    "start": "node --no-deprecation src/server.js",
     "test": "vitest run"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
     "multer": "^2.0.2"

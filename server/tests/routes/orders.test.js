@@ -34,11 +34,14 @@ test('order API creates, reads, updates, archives, and searches an order', async
 	.expect(201);
 
 	expect(created.body.slug).toBe('dinosaur-jungle-jane-doe');
-	expect(created.body.tags).toEqual(expect.arrayContaining(['Birthday', 'Cake', 'Vanilla', '8 Inch', 'Cupcakes', 'Chocolate']));
+	expect(created.body.tags).toEqual(expect.arrayContaining(['Birthday', 'Cake', 'Jungle', 'Vanilla', '8 Inch', 'Cupcakes', 'Leaf Toppers', 'Chocolate']));
 	expect(created.body.orderItems).toHaveLength(2);
 
 	const tags = await request(app).get('/api/tags').expect(200);
-	expect(tags.body).toEqual(expect.arrayContaining(['Birthday', 'Cake', 'Vanilla', '8 Inch', 'Cupcakes', 'Chocolate']));
+	expect(tags.body).toEqual(expect.arrayContaining(['Birthday', 'Cake', 'Dinosaur Jungle', 'Jungle', 'Vanilla', '8 Inch', 'Cupcakes', 'Leaf Toppers', 'Chocolate']));
+
+	const themes = await request(app).get('/api/themes').expect(200);
+	expect(themes.body).toEqual(['Dinosaur Jungle', 'jungle', 'leaf toppers']);
 
 	const updated = await request(app)
 		.patch(`/api/orders/${created.body.id}`)
@@ -49,7 +52,7 @@ test('order API creates, reads, updates, archives, and searches an order', async
 		})
 		.expect(200);
 	expect(updated.body.orderItems).toMatchObject([{ type: 'cake pops', theme: 'dinosaur eggs', count: 36, flavors: 'Red velvet', price: 72 }]);
-	expect(updated.body.tags).toEqual(expect.arrayContaining(['Cake Pops', 'Red Velvet']));
+	expect(updated.body.tags).toEqual(expect.arrayContaining(['Cake Pops', 'Dinosaur Eggs', 'Red Velvet']));
 
 	await request(app).post(`/api/orders/${created.body.id}/archive`).expect(200);
 	const search = await request(app).get('/api/orders/search?q=birthday').expect(200);
