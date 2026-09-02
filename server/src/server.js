@@ -1,9 +1,10 @@
 import { createApp } from './app.js';
 
 const port = process.env.PORT || 3001;
+const host = process.env.HOST || '0.0.0.0';
 const app = createApp();
-const server = app.listen(port, () => {
-	console.log(`Server listening on port ${port}`);
+const server = app.listen(port, host, () => {
+	console.log(`Server listening on http://${host}:${port}`);
 });
 
 server.on('error', (error) => {
