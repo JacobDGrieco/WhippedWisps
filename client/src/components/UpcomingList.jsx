@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { displayLabel } from '../utils/displayText.js';
 
 function getTodayDateInputValue() {
 	const today = new Date();
@@ -21,9 +22,9 @@ export default function UpcomingList({ orders }) {
 			{sortedOrders.map((order) => (
 				<li key={order.id}>
 					<Link to={`/orders/${order.id}`}>
-						<span>{order.dueDate}{order.dueTime ? ` at ${order.dueTime}` : ''}</span>
-						<strong>{order.theme || 'Untitled cake'}</strong>
-						<small>{order.customerName}</small>
+						<span className="upcoming-date">{order.dueDate}{order.dueTime ? ` at ${order.dueTime}` : ''}</span>
+						<strong className="upcoming-theme">{displayLabel(order.theme, 'Untitled cake')}</strong>
+						<small className="upcoming-customer">{order.customerName}</small>
 					</Link>
 				</li>
 			))}

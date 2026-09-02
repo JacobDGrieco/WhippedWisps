@@ -24,13 +24,13 @@ export default function Dashboard() {
 			</section>
 			{error ? <p className="alert">{error}</p> : null}
 			<div className="dashboard-grid">
-				<CalendarGrid orders={orders} month={month} onMonthChange={setMonth} />
-				<section className="panel">
+				<section className="panel upcoming-panel">
 					<div className="section-heading">
 						<h2>Upcoming</h2>
 					</div>
 					<UpcomingList orders={orders} />
 				</section>
+				<CalendarGrid orders={orders} month={month} onMonthChange={setMonth} />
 			</div>
 		</div>
 	);

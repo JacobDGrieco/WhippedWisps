@@ -28,6 +28,13 @@ export default function Recipes() {
 		});
 	}
 
+	function removeIngredient(index) {
+		setDraft((current) => {
+			const ingredients = current.ingredients.filter((_, ingredientIndex) => ingredientIndex !== index);
+			return { ...current, ingredients: ingredients.length ? ingredients : [emptyIngredient()] };
+		});
+	}
+
 	async function createDraftRecipe(event) {
 		event.preventDefault();
 		const created = await api.createRecipe(draft);
@@ -78,6 +85,11 @@ export default function Recipes() {
 								<input placeholder="Quantity" value={ingredient.quantity} onChange={(event) => updateIngredient(index, 'quantity', event.target.value)} />
 								<input placeholder="Unit" value={ingredient.unit} onChange={(event) => updateIngredient(index, 'unit', event.target.value)} />
 								<input placeholder="Item" value={ingredient.item} onChange={(event) => updateIngredient(index, 'item', event.target.value)} />
+								{index > 0 ? (
+									<button type="button" className="text-danger" onClick={() => removeIngredient(index)}>
+										Remove
+									</button>
+								) : null}
 							</div>
 						))}
 					</div>

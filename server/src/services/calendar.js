@@ -95,7 +95,7 @@ function titleCase(value) {
 		.trim()
 		.replace(/\s+/g, ' ')
 		.split(' ')
-		.map((word) => (word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}` : word))
+		.map((word) => (word ? `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}` : word))
 		.join(' ');
 }
 
@@ -185,7 +185,7 @@ function buildDescription(order) {
 }
 
 export function buildCalendarEventPayload(order) {
-	const title = `${order.theme || 'Cake order'} - ${order.customerName}`;
+	const title = `${titleCase(order.theme || 'Cake order')} - ${titleCase(order.customerName)}`;
 	const due = formatTime(order.dueDate, order.dueTime);
 
 	return {

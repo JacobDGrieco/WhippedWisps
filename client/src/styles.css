@@ -1,25 +1,30 @@
 :root {
 	color-scheme: light;
-	font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-family: "Aptos", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 	--ww-bg: oklch(0.96 0.018 74);
 	--ww-bg-soft: oklch(0.935 0.025 76);
+	--ww-bg-deep: oklch(0.9 0.034 78);
 	--ww-surface: oklch(0.985 0.012 78);
 	--ww-surface-warm: oklch(0.955 0.022 74);
 	--ww-surface-inset: oklch(0.93 0.019 75);
 	--ww-ink: oklch(0.22 0.027 52);
+	--ww-ink-soft: oklch(0.31 0.039 54);
 	--ww-muted: oklch(0.48 0.034 55);
 	--ww-subtle: oklch(0.62 0.03 61);
 	--ww-accent: oklch(0.42 0.072 164);
 	--ww-accent-strong: oklch(0.34 0.064 164);
 	--ww-accent-soft: oklch(0.9 0.041 157);
+	--ww-accent-faint: oklch(0.965 0.022 155);
 	--ww-copper: oklch(0.58 0.104 45);
 	--ww-copper-soft: oklch(0.89 0.055 48);
+	--ww-copper-faint: oklch(0.965 0.027 52);
 	--ww-danger: oklch(0.48 0.132 31);
 	--ww-danger-soft: oklch(0.91 0.043 31);
 	--ww-border: oklch(0.82 0.023 70);
 	--ww-border-strong: oklch(0.72 0.034 67);
-	--ww-shadow: 0 16px 42px color-mix(in oklch, var(--ww-ink) 13%, transparent);
-	--ww-shadow-soft: 0 8px 24px color-mix(in oklch, var(--ww-ink) 8%, transparent);
+	--ww-shadow: 0 24px 60px color-mix(in oklch, var(--ww-ink) 15%, transparent);
+	--ww-shadow-soft: 0 12px 30px color-mix(in oklch, var(--ww-ink) 9%, transparent);
+	--ww-shadow-tight: 0 8px 18px color-mix(in oklch, var(--ww-ink) 8%, transparent);
 	background: var(--ww-bg);
 	color: var(--ww-ink);
 	font-synthesis: none;
@@ -33,9 +38,24 @@
 body {
 	margin: 0;
 	min-width: 320px;
+	min-height: 100vh;
 	background:
-		linear-gradient(180deg, color-mix(in oklch, var(--ww-surface) 80%, transparent), transparent 36rem),
-		linear-gradient(135deg, var(--ww-bg), color-mix(in oklch, var(--ww-accent-soft) 34%, var(--ww-bg)) 48%, var(--ww-bg-soft));
+		radial-gradient(circle at 8% 10%, color-mix(in oklch, var(--ww-copper-soft) 52%, transparent), transparent 22rem),
+		radial-gradient(circle at 86% 4%, color-mix(in oklch, var(--ww-accent-soft) 52%, transparent), transparent 24rem),
+		linear-gradient(180deg, color-mix(in oklch, var(--ww-surface) 92%, transparent), transparent 34rem),
+		linear-gradient(135deg, var(--ww-bg), color-mix(in oklch, var(--ww-accent-soft) 30%, var(--ww-bg)) 50%, var(--ww-bg-deep));
+	position: relative;
+}
+
+body::before {
+	background-image: radial-gradient(color-mix(in oklch, var(--ww-copper) 18%, transparent) 0.8px, transparent 0.8px);
+	background-size: 18px 18px;
+	content: "";
+	inset: 0;
+	opacity: 0.34;
+	pointer-events: none;
+	position: fixed;
+	z-index: 0;
 }
 
 a {
@@ -109,6 +129,8 @@ button:not(.primary-action) {
 	max-width: 1440px;
 	min-height: 100vh;
 	padding: 24px;
+	position: relative;
+	z-index: 1;
 }
 
 .topbar {
@@ -187,7 +209,7 @@ nav a.active {
 }
 
 .dashboard-grid {
-	grid-template-columns: minmax(0, 2.5fr) minmax(280px, 0.7fr);
+	grid-template-columns: minmax(0, 1.7fr) minmax(360px, 1fr);
 }
 
 .management-grid,
@@ -687,14 +709,72 @@ textarea {
 	grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
 }
 
-.archive-photos {
+.archive-photos,
+.archive-photo-gallery {
 	display: grid;
 	gap: 12px;
 }
 
-.archive-photos img {
+.archive-photos img,
+.archive-photo-stage img {
 	border-radius: 14px;
 	max-height: 560px;
+	object-fit: cover;
+	width: 100%;
+}
+
+.archive-photo-stage {
+	display: grid;
+	gap: 10px;
+}
+
+.archive-photo-stage img,
+.archive-photo-placeholder {
+	aspect-ratio: 4 / 3;
+	background: var(--ww-accent-soft);
+}
+
+.archive-photo-controls {
+	align-items: center;
+	display: flex;
+	gap: 10px;
+	justify-content: space-between;
+}
+
+.archive-photo-controls span {
+	color: var(--ww-muted);
+	font-size: 0.84rem;
+	font-weight: 800;
+}
+
+.archive-photo-strip {
+	display: grid;
+	gap: 10px;
+	grid-auto-columns: minmax(96px, 124px);
+	grid-auto-flow: column;
+	overflow-x: auto;
+	padding-bottom: 4px;
+	scroll-snap-type: x proximity;
+}
+
+.archive-photo-strip button {
+	aspect-ratio: 4 / 3;
+	background: var(--ww-surface);
+	border-color: var(--ww-border);
+	box-shadow: none;
+	min-height: 0;
+	overflow: hidden;
+	padding: 0;
+	scroll-snap-align: start;
+}
+
+.archive-photo-strip button.active {
+	border-color: var(--ww-accent);
+	box-shadow: 0 0 0 2px color-mix(in oklch, var(--ww-accent) 22%, transparent);
+}
+
+.archive-photo-strip img {
+	height: 100%;
 	object-fit: cover;
 	width: 100%;
 }
@@ -1069,7 +1149,11 @@ textarea {
 
 .ingredient-row {
 	display: grid;
-	grid-template-columns: minmax(84px, 0.35fr) minmax(84px, 0.35fr) minmax(140px, 1fr);
+	grid-template-columns: minmax(84px, 0.35fr) minmax(84px, 0.35fr) minmax(140px, 1fr) auto;
+}
+
+.ingredient-row button {
+	align-self: end;
 }
 
 .alert,
@@ -1096,6 +1180,458 @@ textarea {
 	max-width: 680px;
 }
 
+.app-shell {
+	padding: clamp(22px, 3vw, 42px);
+}
+
+.topbar {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-surface) 72%, transparent), color-mix(in oklch, var(--ww-copper-faint) 62%, transparent));
+	border: 1px solid color-mix(in oklch, var(--ww-border) 54%, transparent);
+	border-radius: 20px;
+	box-shadow: 0 18px 46px color-mix(in oklch, var(--ww-ink) 7%, transparent);
+	margin-bottom: clamp(28px, 4vw, 48px);
+	padding: clamp(16px, 2.4vw, 28px);
+	position: relative;
+}
+
+.topbar::after {
+	background:
+		linear-gradient(90deg, color-mix(in oklch, var(--ww-copper) 42%, transparent), transparent 36%),
+		linear-gradient(90deg, transparent 58%, color-mix(in oklch, var(--ww-accent) 28%, transparent));
+	bottom: 0;
+	content: "";
+	height: 3px;
+	left: 22px;
+	position: absolute;
+	right: 22px;
+}
+
+.topbar h1,
+.page-heading h2 {
+	color: var(--ww-ink);
+	font-weight: 900;
+	letter-spacing: 0;
+	text-wrap: balance;
+}
+
+.topbar h1 {
+	font-size: clamp(2.7rem, 6vw, 5.4rem);
+}
+
+.page-heading {
+	margin-bottom: 4px;
+}
+
+.page-heading h2 {
+	font-size: clamp(2.35rem, 5vw, 4.55rem);
+}
+
+.eyebrow {
+	align-items: center;
+	display: inline-flex;
+	gap: 8px;
+	letter-spacing: 0.06em;
+}
+
+.eyebrow::before {
+	background: var(--ww-copper);
+	content: "";
+	height: 2px;
+	width: 28px;
+}
+
+nav a {
+	backdrop-filter: blur(10px);
+	border-color: color-mix(in oklch, var(--ww-border) 82%, transparent);
+	box-shadow: inset 0 1px 0 color-mix(in oklch, white 72%, transparent);
+}
+
+nav a.active {
+	background:
+		linear-gradient(135deg, var(--ww-ink), color-mix(in oklch, var(--ww-ink) 74%, var(--ww-copper)));
+	box-shadow: var(--ww-shadow-tight);
+}
+
+button,
+.primary-action,
+.secondary-action,
+.file-button {
+	border-radius: 12px;
+	box-shadow: 0 8px 20px color-mix(in oklch, var(--ww-accent) 17%, transparent);
+	font-weight: 800;
+}
+
+.primary-action,
+button.primary-action {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-accent) 92%, white), var(--ww-accent-strong));
+	border-color: color-mix(in oklch, var(--ww-accent) 74%, var(--ww-ink));
+}
+
+.secondary-action,
+.file-button,
+button:not(.primary-action) {
+	background:
+		linear-gradient(180deg, color-mix(in oklch, var(--ww-surface) 92%, white), color-mix(in oklch, var(--ww-copper-faint) 72%, var(--ww-surface)));
+	border-color: color-mix(in oklch, var(--ww-accent) 38%, var(--ww-border));
+	color: var(--ww-accent-strong);
+}
+
+button:active:not(:disabled),
+.primary-action:active,
+.secondary-action:active,
+.file-button:active {
+	transform: translateY(1px) scale(0.99);
+}
+
+.split-button button.active {
+	background:
+		linear-gradient(135deg, var(--ww-ink), color-mix(in oklch, var(--ww-ink) 72%, var(--ww-copper)));
+	color: var(--ww-surface);
+}
+
+.panel,
+.calendar-panel,
+.archive-info,
+.danger-zone,
+.archive-items-panel {
+	background:
+		linear-gradient(180deg, color-mix(in oklch, var(--ww-surface) 92%, white), color-mix(in oklch, var(--ww-copper-faint) 62%, var(--ww-surface)));
+	border-color: color-mix(in oklch, var(--ww-border) 72%, transparent);
+	border-radius: 20px;
+	box-shadow: var(--ww-shadow-soft);
+	position: relative;
+}
+
+.panel::after,
+.calendar-panel::after,
+.archive-info::after,
+.archive-items-panel::after {
+	border: 1px solid color-mix(in oklch, white 54%, transparent);
+	border-radius: inherit;
+	content: "";
+	inset: 1px;
+	pointer-events: none;
+	position: absolute;
+}
+
+.section-heading {
+	border-bottom: 1px solid color-mix(in oklch, var(--ww-border) 58%, transparent);
+	margin-bottom: 18px;
+	padding-bottom: 12px;
+}
+
+.section-heading h2 {
+	font-size: 1.12rem;
+	letter-spacing: 0;
+}
+
+.dashboard-grid {
+	align-items: start;
+	grid-template-columns: minmax(360px, 0.88fr) minmax(0, 1.12fr);
+}
+
+.upcoming-panel {
+	background:
+		linear-gradient(150deg, color-mix(in oklch, var(--ww-accent-faint) 86%, var(--ww-surface)), color-mix(in oklch, var(--ww-copper-faint) 70%, var(--ww-surface)) 56%, var(--ww-surface));
+	border-color: color-mix(in oklch, var(--ww-accent) 28%, var(--ww-border));
+	padding: clamp(20px, 2.2vw, 28px);
+}
+
+.upcoming-list {
+	gap: 14px;
+}
+
+.upcoming-list a {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-surface) 94%, white), color-mix(in oklch, var(--ww-accent-faint) 74%, var(--ww-surface)));
+	border-color: color-mix(in oklch, var(--ww-accent) 22%, var(--ww-border));
+	border-radius: 16px;
+	box-shadow: 0 10px 22px color-mix(in oklch, var(--ww-accent) 10%, transparent);
+	gap: 8px;
+	padding: 16px;
+	position: relative;
+	transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.upcoming-list a::before {
+	background: linear-gradient(180deg, var(--ww-copper), var(--ww-accent));
+	border-radius: 999px;
+	content: "";
+	height: calc(100% - 28px);
+	left: 0;
+	position: absolute;
+	top: 14px;
+	width: 4px;
+}
+
+.upcoming-list a:hover {
+	border-color: color-mix(in oklch, var(--ww-accent) 44%, var(--ww-border));
+	box-shadow: var(--ww-shadow);
+	transform: translateY(-2px);
+}
+
+.upcoming-date {
+	color: color-mix(in oklch, var(--ww-copper) 72%, var(--ww-ink));
+	font-size: 0.8rem;
+	font-weight: 900;
+	text-transform: uppercase;
+}
+
+.upcoming-theme {
+	font-size: clamp(1.3rem, 2.2vw, 2rem);
+	line-height: 1;
+}
+
+.upcoming-customer {
+	color: var(--ww-muted);
+	font-size: 0.95rem;
+	font-weight: 700;
+}
+
+.calendar-panel {
+	padding: 18px;
+}
+
+.calendar-header {
+	background: color-mix(in oklch, var(--ww-surface-inset) 46%, transparent);
+	border: 1px solid color-mix(in oklch, var(--ww-border) 64%, transparent);
+	border-radius: 14px;
+	padding: 8px;
+}
+
+.calendar-header strong {
+	font-size: 1rem;
+	font-weight: 900;
+}
+
+.calendar-cell {
+	background: color-mix(in oklch, var(--ww-surface) 82%, transparent);
+	min-height: clamp(94px, 8.2vw, 132px);
+}
+
+.calendar-cell.is-today {
+	background:
+		linear-gradient(180deg, color-mix(in oklch, var(--ww-copper-soft) 58%, var(--ww-surface)), color-mix(in oklch, var(--ww-surface) 86%, var(--ww-copper-faint)));
+}
+
+.calendar-order {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-accent-soft) 92%, white), color-mix(in oklch, var(--ww-accent-faint) 88%, var(--ww-surface)));
+	border-radius: 8px;
+}
+
+.form-section {
+	counter-increment: form-section;
+	overflow: hidden;
+	padding-left: clamp(20px, 5.8vw, 86px);
+}
+
+.order-form {
+	counter-reset: form-section;
+}
+
+.form-section::before {
+	background:
+		linear-gradient(180deg, color-mix(in oklch, var(--ww-copper-soft) 74%, white), color-mix(in oklch, var(--ww-accent-soft) 66%, white));
+	border: 1px solid color-mix(in oklch, var(--ww-border) 64%, transparent);
+	border-radius: 14px;
+	color: color-mix(in oklch, var(--ww-copper) 72%, var(--ww-ink));
+	content: counter(form-section, decimal-leading-zero);
+	font-size: 0.82rem;
+	font-weight: 900;
+	left: 20px;
+	padding: 8px 9px;
+	position: absolute;
+	top: 20px;
+}
+
+.form-section .section-heading {
+	margin-left: 0;
+}
+
+input,
+select,
+textarea {
+	background: color-mix(in oklch, var(--ww-surface) 78%, white);
+	border-radius: 12px;
+	box-shadow: inset 0 1px 0 color-mix(in oklch, white 70%, transparent);
+}
+
+.field span,
+.checkbox-field span,
+.fulfillment-group > span {
+	color: color-mix(in oklch, var(--ww-muted) 84%, var(--ww-ink));
+	letter-spacing: 0.055em;
+}
+
+.order-item-card,
+.recipe-editor {
+	background:
+		linear-gradient(145deg, color-mix(in oklch, var(--ww-surface) 94%, white), color-mix(in oklch, var(--ww-copper-faint) 68%, var(--ww-surface)));
+	border-radius: 18px;
+}
+
+.order-item-card-header {
+	background: color-mix(in oklch, var(--ww-surface) 62%, transparent);
+	border: 1px solid color-mix(in oklch, var(--ww-border) 58%, transparent);
+	border-radius: 14px;
+	padding: 12px;
+}
+
+.order-item-fields {
+	background:
+		linear-gradient(180deg, color-mix(in oklch, var(--ww-surface-inset) 58%, var(--ww-surface)), color-mix(in oklch, var(--ww-copper-faint) 48%, var(--ww-surface)));
+}
+
+.tag-chip,
+.tag-token {
+	border-radius: 10px;
+}
+
+.archive-grid {
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.archive-card {
+	aspect-ratio: 4 / 5;
+	border: 0;
+	border-radius: 22px;
+	box-shadow: var(--ww-shadow-soft);
+	display: block;
+	position: relative;
+	transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.archive-card:hover {
+	box-shadow: var(--ww-shadow);
+	transform: translateY(-3px);
+}
+
+.archive-card img,
+.archive-card .photo-placeholder {
+	aspect-ratio: auto;
+	height: 100%;
+}
+
+.archive-card::after {
+	background:
+		linear-gradient(180deg, transparent 28%, color-mix(in oklch, var(--ww-ink) 18%, transparent) 58%, color-mix(in oklch, var(--ww-ink) 76%, transparent)),
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-copper) 18%, transparent), transparent 42%);
+	content: "";
+	inset: 0;
+	pointer-events: none;
+	position: absolute;
+}
+
+.archive-card-meta {
+	bottom: 0;
+	color: var(--ww-surface);
+	display: grid;
+	gap: 6px;
+	left: 0;
+	padding: 18px;
+	position: absolute;
+	right: 0;
+	z-index: 1;
+}
+
+.archive-card h3 {
+	font-size: 1.55rem;
+	line-height: 1;
+	margin: 0;
+	text-shadow: 0 1px 14px color-mix(in oklch, var(--ww-ink) 70%, transparent);
+}
+
+.archive-card p,
+.archive-card span {
+	color: color-mix(in oklch, var(--ww-surface) 82%, transparent);
+	margin: 0;
+}
+
+.search-input {
+	background: color-mix(in oklch, var(--ww-surface) 86%, white);
+	box-shadow: var(--ww-shadow-tight);
+}
+
+.archive-detail-top {
+	align-items: start;
+	grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.65fr);
+}
+
+.archive-photo-stage img,
+.archive-photo-placeholder {
+	border-radius: 24px;
+	box-shadow: var(--ww-shadow);
+	max-height: 680px;
+}
+
+.archive-photo-stage img {
+	border: 1px solid color-mix(in oklch, var(--ww-border) 48%, transparent);
+}
+
+.archive-info {
+	background:
+		linear-gradient(150deg, color-mix(in oklch, var(--ww-surface) 92%, white), color-mix(in oklch, var(--ww-copper-faint) 78%, var(--ww-surface)));
+	padding: 24px;
+}
+
+.archive-info-primary {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-copper-soft) 56%, white), color-mix(in oklch, var(--ww-accent-faint) 58%, white));
+	border: 1px solid color-mix(in oklch, var(--ww-border) 62%, transparent);
+	border-radius: 16px;
+	padding: 14px;
+}
+
+.archive-info-primary strong {
+	font-size: 1.35rem;
+	line-height: 1;
+}
+
+.archive-info p strong {
+	color: var(--ww-ink);
+}
+
+.archive-items-panel {
+	margin-top: 2px;
+}
+
+.archive-item {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-surface) 92%, white), color-mix(in oklch, var(--ww-copper-faint) 48%, var(--ww-surface)));
+	border-radius: 16px;
+	padding: 14px;
+}
+
+.item-detail-chip {
+	background: color-mix(in oklch, var(--ww-copper-faint) 76%, var(--ww-surface));
+}
+
+.recipes-page .two-column {
+	grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+}
+
+.recipe-list li {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-surface) 92%, white), color-mix(in oklch, var(--ww-copper-faint) 56%, var(--ww-surface)));
+	border-radius: 16px;
+}
+
+.empty-state,
+.notice,
+.alert {
+	border: 1px solid color-mix(in oklch, currentColor 18%, transparent);
+	box-shadow: var(--ww-shadow-tight);
+}
+
+.empty-state {
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ww-accent-soft) 88%, white), color-mix(in oklch, var(--ww-copper-faint) 80%, white));
+	padding: 18px;
+}
+
 @media (max-width: 900px) {
 	.app-shell {
 		padding: 16px;
@@ -1111,21 +1647,43 @@ textarea {
 		justify-content: flex-start;
 	}
 
+	.topbar {
+		border-radius: 16px;
+	}
+
+	.page-heading {
+		align-items: stretch;
+	}
+
 	.dashboard-grid,
 	.management-grid,
 	.two-column,
 	.archive-detail-top,
 	.form-grid,
-		.two-fields,
-		.date-fields,
-		.fulfillment-row,
-		.order-notes-grid,
-		.recipe-card-top,
-		.recipe-card-body,
-		.order-item-card-header,
-		.order-item-fields,
-		.tier-row {
+	.two-fields,
+	.date-fields,
+	.fulfillment-row,
+	.order-notes-grid,
+	.recipe-card-top,
+	.recipe-card-body,
+	.order-item-card-header,
+	.order-item-fields,
+	.tier-row {
 		grid-template-columns: 1fr;
+	}
+
+	.form-section {
+		padding-left: 20px;
+		padding-top: 58px;
+	}
+
+	.form-section::before {
+		left: 20px;
+		top: 18px;
+	}
+
+	.archive-card {
+		aspect-ratio: 5 / 4;
 	}
 
 	.order-item-card-header {
@@ -1165,9 +1723,38 @@ textarea {
 		padding: 12px;
 	}
 
+	.topbar {
+		padding: 14px;
+	}
+
+	.topbar h1 {
+		font-size: clamp(2.25rem, 14vw, 3.4rem);
+	}
+
+	.page-heading h2 {
+		font-size: clamp(2rem, 12vw, 3rem);
+	}
+
 	nav a {
 		flex: 1 1 calc(50% - 8px);
 		text-align: center;
+	}
+
+	.panel,
+	.calendar-panel,
+	.archive-info,
+	.danger-zone,
+	.archive-items-panel {
+		border-radius: 16px;
+		padding: 16px;
+	}
+
+	.form-section {
+		padding-top: 56px;
+	}
+
+	.upcoming-theme {
+		font-size: 1.35rem;
 	}
 
 	.weekday-row span {
@@ -1179,6 +1766,14 @@ textarea {
 	.calendar-cell {
 		min-height: 68px;
 		padding: 5px;
+	}
+
+	.archive-card {
+		aspect-ratio: 4 / 5;
+	}
+
+	.archive-card-meta {
+		padding: 14px;
 	}
 
 	.calendar-order {

@@ -440,7 +440,7 @@ export default function OrderForm() {
 			{error ? <p className="alert">{error}</p> : null}
 			{notice ? <p className="notice">{notice}</p> : null}
 
-			<section className="panel order-details-panel">
+			<section className="panel order-details-panel form-section form-section-details">
 				<div className="section-heading">
 					<h2>Order Details</h2>
 				</div>
@@ -505,7 +505,7 @@ export default function OrderForm() {
 				</div>
 			</section>
 
-			<section className="panel order-items-panel">
+			<section className="panel order-items-panel form-section form-section-items">
 				<div className="section-heading">
 					<h2>Order Items</h2>
 					<button type="button" onClick={addOrderItem}>Add Item</button>
@@ -627,7 +627,7 @@ export default function OrderForm() {
 				</div>
 			</section>
 
-			<section className="panel order-notes-panel">
+			<section className="panel order-notes-panel form-section form-section-notes">
 				<div className="section-heading">
 					<h2>Order Notes</h2>
 				</div>

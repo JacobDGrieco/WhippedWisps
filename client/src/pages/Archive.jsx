@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import * as api from '../api/client.js';
+import { displayLabel } from '../utils/displayText.js';
 
 export default function Archive() {
 	const [orders, setOrders] = useState([]);
@@ -29,11 +30,12 @@ export default function Archive() {
 			<div className="archive-grid">
 				{orders.map((order) => {
 					const cover = (order.photos || []).find((photo) => photo.isCover) || order.photos?.[0];
+					const title = displayLabel(order.theme, 'Untitled cake');
 					return (
 						<Link key={order.id} to={`/archive/${order.slug}`} className="archive-card">
-							{cover ? <img src={`/uploads/${cover.filePath}`} alt="" /> : <div className="photo-placeholder">No photo</div>}
-							<div>
-								<h3>{order.theme || 'Untitled cake'}</h3>
+							{cover ? <img src={`/uploads/${cover.filePath}`} alt={`${title} cake`} /> : <div className="photo-placeholder">No photo</div>}
+							<div className="archive-card-meta">
+								<h3>{title}</h3>
 								<p>{order.customerName}</p>
 								<span>{order.dueDate}</span>
 							</div>

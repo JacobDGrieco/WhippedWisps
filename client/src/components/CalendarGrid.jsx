@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { displayLabel } from '../utils/displayText.js';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -40,11 +41,11 @@ export default function CalendarGrid({ orders, month, onMonthChange }) {
 		<section className="calendar-panel" aria-label="Monthly schedule">
 			<div className="calendar-header">
 				<button type="button" className="icon-button" onClick={() => onMonthChange(new Date(year, monthIndex - 1, 1))} aria-label="Previous month">
-					‹
+					{'<'}
 				</button>
 				<strong>{month.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</strong>
 				<button type="button" className="icon-button" onClick={() => onMonthChange(new Date(year, monthIndex + 1, 1))} aria-label="Next month">
-					›
+					{'>'}
 				</button>
 			</div>
 			<div className="weekday-row">
@@ -61,7 +62,7 @@ export default function CalendarGrid({ orders, month, onMonthChange }) {
 							{day
 								? (ordersByDay.get(day) || []).map((order) => (
 									<Link key={order.id} to={`/orders/${order.id}`} className="calendar-order">
-										{order.theme || order.customerName}
+										{order.theme ? displayLabel(order.theme) : order.customerName}
 									</Link>
 								))
 								: null}
