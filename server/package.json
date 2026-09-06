@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "build": "npm run build --workspace=client",
     "dev": "node --no-deprecation --watch src/server.js",
     "start": "node --no-deprecation src/server.js",
     "test": "vitest run"

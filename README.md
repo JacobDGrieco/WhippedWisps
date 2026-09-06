@@ -18,6 +18,8 @@ For local Google Calendar testing, put the Google variables in a repo-root `.env
 
 The repository includes `vercel.json` and an `api/index.js` serverless entrypoint. Vercel installs from the repo root, runs `npm run build`, serves the Vite output from `client/dist`, and rewrites `/api/*` plus `/uploads/*` to the Express app.
 
+In Vercel project settings, keep the Root Directory set to the repository root. The `server` workspace has a delegated `build` script for workspace-oriented builds, but the root `vercel.json` is what defines the static output directory and API rewrites.
+
 When `DB_PATH` or `UPLOADS_DIR` are not configured on Vercel, the app falls back to `/tmp`. That keeps previews writable, but data and uploaded images are not durable across deployments or function instance changes.
 
 ## Runtime Data

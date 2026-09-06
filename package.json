@@ -5,6 +5,10 @@
 		"server",
 		"client"
 	],
+	"allowScripts": {
+		"better-sqlite3@11.10.0": true,
+		"esbuild@0.21.5": true
+	},
 	"scripts": {
 		"dev": "concurrently --kill-others-on-fail \"npm run dev:server\" \"npm run dev:client:ready\"",
 		"dev:server": "npm run dev -w server",
