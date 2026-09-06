@@ -14,6 +14,12 @@ The Vite app runs on `http://localhost:5173` and proxies `/api` plus `/uploads` 
 
 For local Google Calendar testing, put the Google variables in a repo-root `.env` file. The server loads that file automatically when it starts. If Vite runs on a port other than `5173`, also set `CLIENT_ORIGIN`, for example `CLIENT_ORIGIN=http://localhost:5174`.
 
+## Vercel Preview Deployment
+
+The repository includes `vercel.json` and an `api/index.js` serverless entrypoint. Vercel installs from the repo root, runs `npm run build`, serves the Vite output from `client/dist`, and rewrites `/api/*` plus `/uploads/*` to the Express app.
+
+When `DB_PATH` or `UPLOADS_DIR` are not configured on Vercel, the app falls back to `/tmp`. That keeps previews writable, but data and uploaded images are not durable across deployments or function instance changes.
+
 ## Runtime Data
 
 Set these environment variables in production:

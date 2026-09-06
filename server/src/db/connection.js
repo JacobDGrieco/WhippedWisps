@@ -31,8 +31,12 @@ function ensureOrderItemColumns(database) {
 	}
 }
 
+function getDefaultDbPath() {
+	return process.env.VERCEL ? '/tmp/whippedwisps.db' : './data/whippedwisps.db';
+}
+
 export function getDb() {
-	const dbPath = path.resolve(process.env.DB_PATH || './data/whippedwisps.db');
+	const dbPath = path.resolve(process.env.DB_PATH || getDefaultDbPath());
 	if (db && openPath === dbPath) {
 		return db;
 	}

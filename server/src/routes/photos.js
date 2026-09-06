@@ -8,8 +8,12 @@ import { getOrderById } from '../db/orders.js';
 
 const router = express.Router({ mergeParams: true });
 
+function getDefaultUploadsDir() {
+	return process.env.VERCEL ? '/tmp/whippedwisps-uploads' : './data/uploads';
+}
+
 export function getUploadsDir() {
-	return path.resolve(process.env.UPLOADS_DIR || './data/uploads');
+	return path.resolve(process.env.UPLOADS_DIR || getDefaultUploadsDir());
 }
 
 function sanitizeFilename(filename) {

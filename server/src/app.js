@@ -62,7 +62,7 @@ export function createApp() {
 	app.use('/api/settings/calendar', settingsCalendarRoutes);
 	app.use('/api', notFound);
 
-	if (process.env.NODE_ENV === 'production') {
+	if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
 		const clientDist = path.resolve(moduleDir, '../../client/dist');
 		app.use(express.static(clientDist));
 		app.get('*', (req, res) => {
