@@ -1,8 +1,8 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
 	"framework": "vite",
-	"installCommand": "npm install --workspaces --include-workspace-root",
-	"buildCommand": "npm run build --workspace=client",
+	"installCommand": "npm install --workspaces --include-workspace-root --include=dev",
+	"buildCommand": "npm install --workspace=client --include=dev && npm run build --workspace=client",
 	"outputDirectory": "client/dist",
 	"functions": {
 		"api/index.js": {
