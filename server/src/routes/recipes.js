@@ -4,46 +4,52 @@ import { badRequest } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
-	res.json(listRecipes());
-});
+function asyncHandler(handler) {
+	return (req, res, next) => {
+		Promise.resolve(handler(req, res, next)).catch(next);
+	};
+}
 
-router.post('/', (req, res, next) => {
+router.get('/', asyncHandler(async (req, res) => {
+	res.json(await listRecipes());
+}));
+
+router.post('/', asyncHandler(async (req, res, next) => {
 	if (!req.body.name?.trim()) {
 		next(badRequest('Recipe name is required.'));
 		return;
 	}
 
-	res.status(201).json(createRecipe(req.body));
-});
+	res.status(201).json(await createRecipe(req.body));
+}));
 
-router.get('/:recipeId', (req, res) => {
-	const recipe = getRecipeById(req.params.recipeId);
+router.get('/:recipeId', asyncHandler(async (req, res) => {
+	const recipe = await getRecipeById(req.params.recipeId);
 	if (!recipe) {
 		res.status(404).json({ message: 'Recipe not found.' });
 		return;
 	}
 
 	res.json(recipe);
-});
+}));
 
-router.patch('/:recipeId', (req, res) => {
-	const recipe = updateRecipe(req.params.recipeId, req.body);
+router.patch('/:recipeId', asyncHandler(async (req, res) => {
+	const recipe = await updateRecipe(req.params.recipeId, req.body);
 	if (!recipe) {
 		res.status(404).json({ message: 'Recipe not found.' });
 		return;
 	}
 
 	res.json(recipe);
-});
+}));
 
-router.delete('/:recipeId', (req, res) => {
-	if (!deleteRecipe(req.params.recipeId)) {
+router.delete('/:recipeId', asyncHandler(async (req, res) => {
+	if (!(await deleteRecipe(req.params.recipeId))) {
 		res.status(404).json({ message: 'Recipe not found.' });
 		return;
 	}
 
 	res.json({ deleted: true });
-});
+}));
 
 export default router;

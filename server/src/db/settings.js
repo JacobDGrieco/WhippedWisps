@@ -1,19 +1,21 @@
 import { getDb } from './connection.js';
 
-export function getSetting(key) {
-	return getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? null;
+export async function getSetting(key) {
+	const db = await getDb();
+	return (await db.one('SELECT value FROM settings WHERE key = $1', [key]))?.value ?? null;
 }
 
-export function setSetting(key, value) {
-	getDb()
-		.prepare(`
-			INSERT INTO settings (key, value)
-			VALUES (?, ?)
-			ON CONFLICT(key) DO UPDATE SET value = excluded.value
-		`)
-		.run(key, value);
+export async function setSetting(key, value) {
+	const db = await getDb();
+	await db.run(`
+		INSERT INTO settings (key, value)
+		VALUES ($1, $2)
+		ON CONFLICT(key) DO UPDATE SET value = excluded.value
+	`, [key, value]);
 }
 
-export function deleteSetting(key) {
-	return getDb().prepare('DELETE FROM settings WHERE key = ?').run(key).changes > 0;
+export async function deleteSetting(key) {
+	const db = await getDb();
+	const result = await db.run('DELETE FROM settings WHERE key = $1', [key]);
+	return result.changes > 0;
 }

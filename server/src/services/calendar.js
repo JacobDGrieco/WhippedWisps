@@ -10,7 +10,7 @@ function hasGoogleConfig() {
 	return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REDIRECT_URI);
 }
 
-export function getOAuthClient() {
+export async function getOAuthClient() {
 	if (!hasGoogleConfig()) {
 		return null;
 	}
@@ -20,7 +20,7 @@ export function getOAuthClient() {
 		process.env.GOOGLE_CLIENT_SECRET,
 		process.env.GOOGLE_REDIRECT_URI
 	);
-	const refreshToken = getSetting(TOKEN_KEY);
+	const refreshToken = await getSetting(TOKEN_KEY);
 	if (refreshToken) {
 		client.setCredentials({ refresh_token: refreshToken });
 	}
@@ -28,8 +28,8 @@ export function getOAuthClient() {
 	return client;
 }
 
-export function getCalendarAuthUrl() {
-	const client = getOAuthClient();
+export async function getCalendarAuthUrl() {
+	const client = await getOAuthClient();
 	if (!client) {
 		const error = new Error('Google Calendar is not configured on the server.');
 		error.status = 400;
@@ -44,7 +44,7 @@ export function getCalendarAuthUrl() {
 }
 
 export async function storeCalendarCode(code) {
-	const client = getOAuthClient();
+	const client = await getOAuthClient();
 	if (!client) {
 		const error = new Error('Google Calendar is not configured on the server.');
 		error.status = 400;
@@ -53,20 +53,20 @@ export async function storeCalendarCode(code) {
 
 	const { tokens } = await client.getToken(code);
 	if (tokens.refresh_token) {
-		setSetting(TOKEN_KEY, tokens.refresh_token);
+		await setSetting(TOKEN_KEY, tokens.refresh_token);
 	}
 
 	return tokens;
 }
 
-export function isCalendarConnected() {
-	return Boolean(hasGoogleConfig() && getSetting(TOKEN_KEY));
+export async function isCalendarConnected() {
+	return Boolean(hasGoogleConfig() && await getSetting(TOKEN_KEY));
 }
 
-export function disconnectCalendarAccount() {
-	const hadRefreshToken = deleteSetting(TOKEN_KEY);
-	deleteSetting(CALENDAR_ID_KEY);
-	const clearedEventCount = clearOrderGoogleEventIds();
+export async function disconnectCalendarAccount() {
+	const hadRefreshToken = await deleteSetting(TOKEN_KEY);
+	await deleteSetting(CALENDAR_ID_KEY);
+	const clearedEventCount = await clearOrderGoogleEventIds();
 
 	return {
 		disconnected: hadRefreshToken,
@@ -205,10 +205,10 @@ export function buildCalendarEventPayload(order) {
 
 async function getOrdersCalendarId(calendar, { refreshCachedCalendar = false } = {}) {
 	if (refreshCachedCalendar) {
-		deleteSetting(CALENDAR_ID_KEY);
+		await deleteSetting(CALENDAR_ID_KEY);
 	}
 
-	const existingCalendarId = getSetting(CALENDAR_ID_KEY);
+	const existingCalendarId = await getSetting(CALENDAR_ID_KEY);
 	if (existingCalendarId) {
 		return existingCalendarId;
 	}
@@ -217,7 +217,7 @@ async function getOrdersCalendarId(calendar, { refreshCachedCalendar = false } =
 	const list = await calendar.calendarList.list();
 	const match = list.data.items?.find((item) => item.summary === calendarName);
 	if (match?.id) {
-		setSetting(CALENDAR_ID_KEY, match.id);
+		await setSetting(CALENDAR_ID_KEY, match.id);
 		return match.id;
 	}
 
@@ -227,7 +227,7 @@ async function getOrdersCalendarId(calendar, { refreshCachedCalendar = false } =
 			timeZone: process.env.TIME_ZONE || 'America/New_York'
 		}
 	});
-	setSetting(CALENDAR_ID_KEY, created.data.id);
+	await setSetting(CALENDAR_ID_KEY, created.data.id);
 	return created.data.id;
 }
 
@@ -253,11 +253,11 @@ async function insertOrderEvent(calendar, requestBody) {
 }
 
 export async function syncOrderToCalendar(order) {
-	if (!isCalendarConnected()) {
+	if (!(await isCalendarConnected())) {
 		return { skipped: true };
 	}
 
-	const auth = getOAuthClient();
+	const auth = await getOAuthClient();
 	const calendar = google.calendar({ version: 'v3', auth });
 	const calendarId = await getOrdersCalendarId(calendar);
 	const requestBody = buildCalendarEventPayload(order);
@@ -280,18 +280,18 @@ export async function syncOrderToCalendar(order) {
 	const created = await insertOrderEvent(calendar, requestBody);
 	const eventId = created.data.id;
 	if (eventId) {
-		setOrderGoogleEventId(order.id, eventId);
+		await setOrderGoogleEventId(order.id, eventId);
 	}
 
 	return { synced: true, eventId };
 }
 
 export async function deleteOrderFromCalendar(order) {
-	if (!order?.googleEventId || !isCalendarConnected()) {
+	if (!order?.googleEventId || !(await isCalendarConnected())) {
 		return { skipped: true };
 	}
 
-	const auth = getOAuthClient();
+	const auth = await getOAuthClient();
 	const calendar = google.calendar({ version: 'v3', auth });
 	const calendarId = await getOrdersCalendarId(calendar);
 	await calendar.events.delete({ calendarId, eventId: order.googleEventId });

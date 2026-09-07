@@ -8,6 +8,12 @@ import { getOrderById } from '../db/orders.js';
 
 const router = express.Router({ mergeParams: true });
 
+function asyncHandler(handler) {
+	return (req, res, next) => {
+		Promise.resolve(handler(req, res, next)).catch(next);
+	};
+}
+
 function getDefaultUploadsDir() {
 	return process.env.VERCEL ? '/tmp/whippedwisps-uploads' : './data/uploads';
 }
@@ -48,12 +54,12 @@ const upload = multer({
 	}
 });
 
-router.get('/', (req, res) => {
-	res.json(listPhotos(req.params.orderId));
-});
+router.get('/', asyncHandler(async (req, res) => {
+	res.json(await listPhotos(req.params.orderId));
+}));
 
-function requireExistingOrder(req, res, next) {
-	if (!getOrderById(req.params.orderId)) {
+async function requireExistingOrder(req, res, next) {
+	if (!(await getOrderById(req.params.orderId))) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
@@ -61,24 +67,24 @@ function requireExistingOrder(req, res, next) {
 	next();
 }
 
-router.post('/', requireExistingOrder, upload.single('photo'), (req, res) => {
+router.post('/', asyncHandler(requireExistingOrder), upload.single('photo'), asyncHandler(async (req, res) => {
 	if (!req.file) {
 		res.status(400).json({ message: 'Photo file is required.' });
 		return;
 	}
 
 	const relativePath = path.join(String(req.params.orderId), req.file.filename).replaceAll('\\', '/');
-	res.status(201).json(createPhoto(req.params.orderId, relativePath));
-});
+	res.status(201).json(await createPhoto(req.params.orderId, relativePath));
+}));
 
-router.delete('/:photoId', (req, res) => {
-	const photo = getPhotoById(req.params.photoId);
+router.delete('/:photoId', asyncHandler(async (req, res) => {
+	const photo = await getPhotoById(req.params.photoId);
 	if (!photo) {
 		res.status(404).json({ message: 'Photo not found.' });
 		return;
 	}
 
-	deletePhoto(req.params.photoId);
+	await deletePhoto(req.params.photoId);
 
 	const absolutePath = path.resolve(getUploadsDir(), photo.filePath);
 	const uploadsDir = getUploadsDir();
@@ -87,6 +93,6 @@ router.delete('/:photoId', (req, res) => {
 	}
 
 	res.json({ deleted: true });
-});
+}));
 
 export default router;

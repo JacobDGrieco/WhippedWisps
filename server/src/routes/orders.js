@@ -58,8 +58,8 @@ function getAutomaticOrderTags(order) {
 	]));
 }
 
-function applyTagsForOrder(orderId, submittedTags) {
-	const hydratedOrder = hydrateOrder(getOrderById(orderId));
+async function applyTagsForOrder(orderId, submittedTags) {
+	const hydratedOrder = await hydrateOrder(await getOrderById(orderId));
 	const baseTags = Array.isArray(submittedTags) ? submittedTags : hydratedOrder.tags;
 	return setTagsForOrder(orderId, mergeTagNames(baseTags, getAutomaticOrderTags(hydratedOrder)));
 }
@@ -92,6 +92,12 @@ function getCalendarErrorSummary(error) {
 	return [status ? `status ${status}` : null, message].filter(Boolean).join(': ') || 'Unknown Calendar API error';
 }
 
+function asyncHandler(handler) {
+	return (req, res, next) => {
+		Promise.resolve(handler(req, res, next)).catch(next);
+	};
+}
+
 async function trySync(order) {
 	try {
 		await syncOrderToCalendar(order);
@@ -112,107 +118,117 @@ async function tryDeleteCalendar(order) {
 	}
 }
 
-export function hydrateOrder(order) {
+export async function hydrateOrder(order) {
 	if (!order) {
 		return undefined;
 	}
 
+	const [orderItems, neededItems, photos, tags, orderRecipes] = await Promise.all([
+		listOrderItems(order.id),
+		listNeededItems(order.id),
+		listPhotos(order.id),
+		getTagsForOrder(order.id),
+		listOrderRecipes(order.id)
+	]);
+
 	return {
 		...order,
-		orderItems: listOrderItems(order.id),
-		neededItems: listNeededItems(order.id),
-		photos: listPhotos(order.id),
-		tags: getTagsForOrder(order.id),
-		orderRecipes: listOrderRecipes(order.id)
+		orderItems,
+		neededItems,
+		photos,
+		tags,
+		orderRecipes
 	};
 }
 
-router.get('/search', (req, res) => {
+router.get('/search', asyncHandler(async (req, res) => {
 	const query = String(req.query.q || '');
-	res.json(searchArchivedOrders(query).map(hydrateOrder));
-});
+	const orders = await searchArchivedOrders(query);
+	res.json(await Promise.all(orders.map(hydrateOrder)));
+}));
 
-router.get('/slug/:slug', (req, res) => {
-	const order = hydrateOrder(getOrderBySlug(req.params.slug));
+router.get('/slug/:slug', asyncHandler(async (req, res) => {
+	const order = await hydrateOrder(await getOrderBySlug(req.params.slug));
 	if (!order) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
 
 	res.json(order);
-});
+}));
 
-router.get('/', (req, res) => {
-	res.json(listOrders({ status: req.query.status }).map(hydrateOrder));
-});
+router.get('/', asyncHandler(async (req, res) => {
+	const orders = await listOrders({ status: req.query.status });
+	res.json(await Promise.all(orders.map(hydrateOrder)));
+}));
 
-router.post('/', validateOrderPayload, async (req, res) => {
-	const order = createOrder(req.body);
-	applyTagsForOrder(order.id, req.body.tags);
+router.post('/', validateOrderPayload, asyncHandler(async (req, res) => {
+	const order = await createOrder(req.body);
+	await applyTagsForOrder(order.id, req.body.tags);
 
-	const syncedOrder = hydrateOrder(getOrderById(order.id));
+	const syncedOrder = await hydrateOrder(await getOrderById(order.id));
 	const calendarResult = await trySync(syncedOrder);
-	res.status(201).json(addCalendarWarning(hydrateOrder(getOrderById(order.id)), calendarResult));
-});
+	res.status(201).json(addCalendarWarning(await hydrateOrder(await getOrderById(order.id)), calendarResult));
+}));
 
-router.get('/:id', (req, res) => {
-	const order = hydrateOrder(getOrderById(req.params.id));
+router.get('/:id', asyncHandler(async (req, res) => {
+	const order = await hydrateOrder(await getOrderById(req.params.id));
 	if (!order) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
 
 	res.json(order);
-});
+}));
 
-router.patch('/:id', validateOrderPayload, async (req, res) => {
-	const order = updateOrder(req.params.id, req.body);
+router.patch('/:id', validateOrderPayload, asyncHandler(async (req, res) => {
+	const order = await updateOrder(req.params.id, req.body);
 	if (!order) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
 
 	if (Array.isArray(req.body.tags) || Array.isArray(req.body.orderItems)) {
-		applyTagsForOrder(order.id, req.body.tags);
+		await applyTagsForOrder(order.id, req.body.tags);
 	}
 
-	const calendarResult = await trySync(hydrateOrder(getOrderById(order.id)));
-	res.json(addCalendarWarning(hydrateOrder(getOrderById(order.id)), calendarResult));
-});
+	const calendarResult = await trySync(await hydrateOrder(await getOrderById(order.id)));
+	res.json(addCalendarWarning(await hydrateOrder(await getOrderById(order.id)), calendarResult));
+}));
 
-router.post('/:id/archive', async (req, res) => {
-	const order = archiveOrder(req.params.id);
+router.post('/:id/archive', asyncHandler(async (req, res) => {
+	const order = await archiveOrder(req.params.id);
 	if (!order) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
 
-	const hydratedOrder = hydrateOrder(order);
+	const hydratedOrder = await hydrateOrder(order);
 	const calendarResult = await trySync(hydratedOrder);
 	res.json(addCalendarWarning(hydratedOrder, calendarResult));
-});
+}));
 
-router.post('/:id/resync-calendar', async (req, res) => {
-	const order = getOrderById(req.params.id);
+router.post('/:id/resync-calendar', asyncHandler(async (req, res) => {
+	const order = await getOrderById(req.params.id);
 	if (!order) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
 
-	const calendarResult = await trySync(hydrateOrder(order));
-	res.json(addCalendarWarning(hydrateOrder(getOrderById(order.id)), calendarResult));
-});
+	const calendarResult = await trySync(await hydrateOrder(order));
+	res.json(addCalendarWarning(await hydrateOrder(await getOrderById(order.id)), calendarResult));
+}));
 
-router.delete('/:id', async (req, res) => {
-	const order = getOrderById(req.params.id);
+router.delete('/:id', asyncHandler(async (req, res) => {
+	const order = await getOrderById(req.params.id);
 	if (!order) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
 
 	const calendarResult = await tryDeleteCalendar(order);
-	deleteOrder(req.params.id);
+	await deleteOrder(req.params.id);
 	res.json(addCalendarWarning({ deleted: true }, calendarResult));
-});
+}));
 
 export default router;

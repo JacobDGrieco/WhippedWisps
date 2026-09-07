@@ -5,12 +5,18 @@ import { badRequest } from '../middleware/errorHandler.js';
 
 const router = express.Router({ mergeParams: true });
 
-router.get('/', (req, res) => {
-	res.json(listNeededItems(req.params.orderId));
-});
+function asyncHandler(handler) {
+	return (req, res, next) => {
+		Promise.resolve(handler(req, res, next)).catch(next);
+	};
+}
 
-router.post('/', (req, res, next) => {
-	if (!getOrderById(req.params.orderId)) {
+router.get('/', asyncHandler(async (req, res) => {
+	res.json(await listNeededItems(req.params.orderId));
+}));
+
+router.post('/', asyncHandler(async (req, res, next) => {
+	if (!(await getOrderById(req.params.orderId))) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
@@ -20,26 +26,26 @@ router.post('/', (req, res, next) => {
 		return;
 	}
 
-	res.status(201).json(createNeededItem(req.params.orderId, req.body));
-});
+	res.status(201).json(await createNeededItem(req.params.orderId, req.body));
+}));
 
-router.patch('/:itemId', (req, res) => {
-	const item = updateNeededItem(req.params.itemId, req.body);
+router.patch('/:itemId', asyncHandler(async (req, res) => {
+	const item = await updateNeededItem(req.params.itemId, req.body);
 	if (!item) {
 		res.status(404).json({ message: 'Needed item not found.' });
 		return;
 	}
 
 	res.json(item);
-});
+}));
 
-router.delete('/:itemId', (req, res) => {
-	if (!deleteNeededItem(req.params.itemId)) {
+router.delete('/:itemId', asyncHandler(async (req, res) => {
+	if (!(await deleteNeededItem(req.params.itemId))) {
 		res.status(404).json({ message: 'Needed item not found.' });
 		return;
 	}
 
 	res.json({ deleted: true });
-});
+}));
 
 export default router;

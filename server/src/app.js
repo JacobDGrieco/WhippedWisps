@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDb } from './db/connection.js';
 import orderRoutes from './routes/orders.js';
 import neededItemRoutes from './routes/neededItems.js';
 import tagRoutes from './routes/tags.js';
@@ -16,6 +15,12 @@ import { listTags } from './db/tags.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+
+function asyncHandler(handler) {
+	return (req, res, next) => {
+		Promise.resolve(handler(req, res, next)).catch(next);
+	};
+}
 
 function mergeCatalogNames(...catalogs) {
 	const seen = new Set();
@@ -36,8 +41,6 @@ function mergeCatalogNames(...catalogs) {
 }
 
 export function createApp() {
-	getDb();
-
 	const app = express();
 	app.use(cors());
 	app.use(express.json({ limit: '1mb' }));
@@ -53,12 +56,12 @@ export function createApp() {
 	app.use('/api/orders/:orderId/order-recipes', orderRecipeRoutes);
 	app.use('/api/orders', orderRoutes);
 	app.use('/api/recipes', recipeRoutes);
-	app.get('/api/tags', (req, res) => {
-		res.json(mergeCatalogNames(listTags(), listThemes()));
-	});
-	app.get('/api/themes', (req, res) => {
-		res.json(listThemes());
-	});
+	app.get('/api/tags', asyncHandler(async (req, res) => {
+		res.json(mergeCatalogNames(await listTags(), await listThemes()));
+	}));
+	app.get('/api/themes', asyncHandler(async (req, res) => {
+		res.json(await listThemes());
+	}));
 	app.use('/api/settings/calendar', settingsCalendarRoutes);
 	app.use('/api', notFound);
 

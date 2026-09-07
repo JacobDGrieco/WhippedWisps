@@ -75,36 +75,45 @@ function normalizeOrderItemInput(item, sortOrder) {
 	};
 }
 
-export function listOrderItems(orderId) {
-	return getDb()
-		.prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY sort_order ASC, id ASC')
-		.all(orderId)
-		.map(rowToOrderItem);
+export async function listOrderItems(orderId) {
+	const db = await getDb();
+	const rows = await db.query('SELECT * FROM order_items WHERE order_id = $1 ORDER BY sort_order ASC, id ASC', [orderId]);
+	return rows.map(rowToOrderItem);
 }
 
-export function replaceOrderItemsWithDb(db, orderId, items = []) {
+export async function replaceOrderItemsWithDb(db, orderId, items = []) {
 	const normalizedItems = items.map(normalizeOrderItemInput);
-	db.prepare('DELETE FROM order_items WHERE order_id = ?').run(orderId);
-
-	const insert = db.prepare(`
-		INSERT INTO order_items (
-			order_id, type, theme, dimensions, servings, flavors, count, price,
-			notes, tier_count, tier_details, sort_order
-		) VALUES (
-			@orderId, @type, @theme, @dimensions, @servings, @flavors, @count, @price,
-			@notes, @tierCount, @tierDetails, @sortOrder
-		)
-	`);
+	await db.run('DELETE FROM order_items WHERE order_id = $1', [orderId]);
 
 	for (const item of normalizedItems) {
-		insert.run({ ...item, orderId });
+		await db.run(`
+			INSERT INTO order_items (
+				order_id, type, theme, dimensions, servings, flavors, count, price,
+				notes, tier_count, tier_details, sort_order
+			) VALUES (
+				$1, $2, $3, $4, $5, $6, $7, $8,
+				$9, $10, $11, $12
+			)
+		`, [
+			orderId,
+			item.type,
+			item.theme,
+			item.dimensions,
+			item.servings,
+			item.flavors,
+			item.count,
+			item.price,
+			item.notes,
+			item.tierCount,
+			item.tierDetails,
+			item.sortOrder
+		]);
 	}
 }
 
-export function replaceOrderItems(orderId, items = []) {
-	const db = getDb();
-	const replace = db.transaction(() => replaceOrderItemsWithDb(db, orderId, items));
+export async function replaceOrderItems(orderId, items = []) {
+	const db = await getDb();
+	await db.transaction((transactionDb) => replaceOrderItemsWithDb(transactionDb, orderId, items));
 
-	replace();
 	return listOrderItems(orderId);
 }

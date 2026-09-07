@@ -4,21 +4,27 @@ import { getOrderById } from '../db/orders.js';
 
 const router = express.Router({ mergeParams: true });
 
-router.get('/all', (req, res) => {
-	res.json(listTags());
-});
+function asyncHandler(handler) {
+	return (req, res, next) => {
+		Promise.resolve(handler(req, res, next)).catch(next);
+	};
+}
 
-router.get('/', (req, res) => {
-	res.json(getTagsForOrder(req.params.orderId));
-});
+router.get('/all', asyncHandler(async (req, res) => {
+	res.json(await listTags());
+}));
 
-router.put('/', (req, res) => {
-	if (!getOrderById(req.params.orderId)) {
+router.get('/', asyncHandler(async (req, res) => {
+	res.json(await getTagsForOrder(req.params.orderId));
+}));
+
+router.put('/', asyncHandler(async (req, res) => {
+	if (!(await getOrderById(req.params.orderId))) {
 		res.status(404).json({ message: 'Order not found.' });
 		return;
 	}
 
-	res.json(setTagsForOrder(req.params.orderId, req.body.tags || []));
-});
+	res.json(await setTagsForOrder(req.params.orderId, req.body.tags || []));
+}));
 
 export default router;

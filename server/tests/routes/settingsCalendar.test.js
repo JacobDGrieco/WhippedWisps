@@ -35,9 +35,9 @@ function resetRedirectEnv() {
 	restoreEnvValue('GOOGLE_REDIRECT_URI', originalGoogleRedirectUri);
 }
 
-afterEach(() => {
+afterEach(async () => {
 	resetRedirectEnv();
-	closeDb();
+	await closeDb();
 	fs.rmSync(TEST_DB, { force: true });
 });
 
@@ -66,17 +66,21 @@ test('calendar callback keeps relative redirects in production', () => {
 });
 
 test('DELETE /api/settings/calendar/connection removes the connected account metadata', async () => {
-	closeDb();
+	await closeDb();
 	fs.rmSync(TEST_DB, { force: true });
 	process.env.DB_PATH = TEST_DB;
+	delete process.env.DATABASE_URL;
+	delete process.env.POSTGRES_URL;
+	delete process.env.POSTGRES_PRISMA_URL;
+	delete process.env.POSTGRES_URL_NON_POOLING;
 	process.env.GOOGLE_CLIENT_ID = 'client-id';
 	process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
 	process.env.GOOGLE_REDIRECT_URI = 'http://localhost:3001/api/settings/calendar/callback';
 
 	const app = createApp();
-	setSetting('google.refreshToken', 'refresh-token');
-	setSetting('google.calendarId', 'calendar-id');
-	const order = createOrder({
+	await setSetting('google.refreshToken', 'refresh-token');
+	await setSetting('google.calendarId', 'calendar-id');
+	const order = await createOrder({
 		customerName: 'Jane Doe',
 		dueDate: '2026-09-01',
 		googleEventId: 'google-event-id'
@@ -92,7 +96,7 @@ test('DELETE /api/settings/calendar/connection removes the connected account met
 		disconnected: true,
 		clearedEventCount: 1
 	});
-	expect(getSetting('google.refreshToken')).toBeNull();
-	expect(getSetting('google.calendarId')).toBeNull();
-	expect(getOrderById(order.id).googleEventId).toBeNull();
+	expect(await getSetting('google.refreshToken')).toBeNull();
+	expect(await getSetting('google.calendarId')).toBeNull();
+	expect((await getOrderById(order.id)).googleEventId).toBeNull();
 });

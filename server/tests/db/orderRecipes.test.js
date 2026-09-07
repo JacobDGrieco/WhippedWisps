@@ -8,26 +8,30 @@ import { createRecipe, getRecipeById, updateRecipe } from '../../src/db/recipes.
 
 const TEST_DB = path.resolve('./server/tests/tmp/test-order-recipes.db');
 
-beforeEach(() => {
-	closeDb();
+beforeEach(async () => {
+	await closeDb();
 	fs.rmSync(TEST_DB, { force: true });
 	process.env.DB_PATH = TEST_DB;
-	getDb();
+	delete process.env.DATABASE_URL;
+	delete process.env.POSTGRES_URL;
+	delete process.env.POSTGRES_PRISMA_URL;
+	delete process.env.POSTGRES_URL_NON_POOLING;
+	await getDb();
 });
 
-test('attaching a recipe copies a snapshot that is independent of the template', () => {
-	const order = createOrder({ customerName: 'Jane', theme: 'Vanilla', dueDate: '2026-09-01' });
-	const template = createRecipe({
+test('attaching a recipe copies a snapshot that is independent of the template', async () => {
+	const order = await createOrder({ customerName: 'Jane', theme: 'Vanilla', dueDate: '2026-09-01' });
+	const template = await createRecipe({
 		name: 'Vanilla Sponge',
 		ingredients: [{ item: 'Flour', quantity: '2', unit: 'cups' }],
 		instructions: 'Mix.'
 	});
 
-	const attached = attachRecipeToOrder(order.id, template.id);
-	updateRecipe(template.id, { name: 'Updated Template', instructions: 'Template changed.' });
-	const editedSnapshot = updateOrderRecipe(attached.id, { instructions: 'Order changed.' });
+	const attached = await attachRecipeToOrder(order.id, template.id);
+	await updateRecipe(template.id, { name: 'Updated Template', instructions: 'Template changed.' });
+	const editedSnapshot = await updateOrderRecipe(attached.id, { instructions: 'Order changed.' });
 
 	expect(editedSnapshot.recipeName).toBe('Vanilla Sponge');
 	expect(editedSnapshot.instructions).toBe('Order changed.');
-	expect(getRecipeById(template.id).instructions).toBe('Template changed.');
+	expect((await getRecipeById(template.id)).instructions).toBe('Template changed.');
 });

@@ -59,6 +59,12 @@ function parseJsonArray(value, fallback = []) {
 	}
 }
 
+function updatedAtSql(db) {
+	return db.kind === 'postgres'
+		? "to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS')"
+		: "datetime('now')";
+}
+
 export function rowToOrder(row) {
 	if (!row) {
 		return undefined;
@@ -93,10 +99,10 @@ export function rowToOrder(row) {
 	};
 }
 
-function existingSlugs(db, exceptOrderId) {
+async function existingSlugs(db, exceptOrderId) {
 	const rows = exceptOrderId
-		? db.prepare('SELECT slug FROM orders WHERE id != ?').all(exceptOrderId)
-		: db.prepare('SELECT slug FROM orders').all();
+		? await db.query('SELECT slug FROM orders WHERE id <> $1', [exceptOrderId])
+		: await db.query('SELECT slug FROM orders');
 
 	return new Set(rows.map((row) => row.slug));
 }
@@ -119,7 +125,7 @@ function normalizeOrderInput(data) {
 		flavors: data.flavors ?? null,
 		price: data.price === '' || data.price === undefined ? null : Number(data.price),
 		depositAmount: data.depositAmount === '' || data.depositAmount === undefined ? null : Number(data.depositAmount),
-		depositPaid: data.depositPaid ? 1 : 0,
+		depositPaid: Boolean(data.depositPaid),
 		notes: data.notes ?? null,
 		googleEventId: data.googleEventId ?? null,
 		reminderOffsets: JSON.stringify(data.reminderOffsets ?? DEFAULT_REMINDER_OFFSETS)
@@ -130,12 +136,13 @@ function normalizeThemeName(theme) {
 	return String(theme || '').trim().replace(/\s+/g, ' ');
 }
 
-export function listThemes() {
-	const rows = getDb().prepare(`
+export async function listThemes() {
+	const db = await getDb();
+	const rows = await db.query(`
 		SELECT theme FROM orders WHERE theme IS NOT NULL AND trim(theme) != ''
 		UNION ALL
 		SELECT theme FROM order_items WHERE theme IS NOT NULL AND trim(theme) != ''
-	`).all();
+	`);
 	const seen = new Set();
 
 	return rows
@@ -153,125 +160,161 @@ export function listThemes() {
 		.sort((firstTheme, secondTheme) => firstTheme.localeCompare(secondTheme, undefined, { sensitivity: 'base' }));
 }
 
-export function createOrder(data) {
-	const db = getDb();
-	const slug = generateSlug(data, existingSlugs(db));
+export async function createOrder(data) {
+	const db = await getDb();
+	const slug = generateSlug(data, await existingSlugs(db));
 	const input = normalizeOrderInput(data);
 
-	const create = db.transaction(() => {
-		const result = db.prepare(`
+	const orderId = await db.transaction(async (transactionDb) => {
+		const row = await transactionDb.one(`
 			INSERT INTO orders (
 				slug, status, customer_name, customer_contact, order_date, due_date, due_time,
 				delivery_type, delivery_address, delivery_window_start, delivery_window_end,
 				theme, description, dimensions, servings, flavors, price, deposit_amount,
 				deposit_paid, notes, google_event_id, reminder_offsets
 			) VALUES (
-				@slug, 'scheduled', @customerName, @customerContact, @orderDate, @dueDate, @dueTime,
-				@deliveryType, @deliveryAddress, @deliveryWindowStart, @deliveryWindowEnd,
-				@theme, @description, @dimensions, @servings, @flavors, @price, @depositAmount,
-				@depositPaid, @notes, @googleEventId, @reminderOffsets
+				$1, 'scheduled', $2, $3, $4, $5, $6,
+				$7, $8, $9, $10,
+				$11, $12, $13, $14, $15, $16, $17,
+				$18, $19, $20, $21
 			)
-		`).run({ ...input, slug });
+			RETURNING id
+		`, [
+			slug,
+			input.customerName,
+			input.customerContact,
+			input.orderDate,
+			input.dueDate,
+			input.dueTime,
+			input.deliveryType,
+			input.deliveryAddress,
+			input.deliveryWindowStart,
+			input.deliveryWindowEnd,
+			input.theme,
+			input.description,
+			input.dimensions,
+			input.servings,
+			input.flavors,
+			input.price,
+			input.depositAmount,
+			input.depositPaid,
+			input.notes,
+			input.googleEventId,
+			input.reminderOffsets
+		]);
 
 		if (Array.isArray(data.orderItems)) {
-			replaceOrderItemsWithDb(db, result.lastInsertRowid, data.orderItems);
+			await replaceOrderItemsWithDb(transactionDb, row.id, data.orderItems);
 		}
 
-		return result.lastInsertRowid;
+		return row.id;
 	});
 
-	return getOrderById(create());
+	return getOrderById(orderId);
 }
 
-export function getOrderById(id) {
-	return rowToOrder(getDb().prepare('SELECT * FROM orders WHERE id = ?').get(id));
+export async function getOrderById(id) {
+	const db = await getDb();
+	return rowToOrder(await db.one('SELECT * FROM orders WHERE id = $1', [id]));
 }
 
-export function getOrderBySlug(slug) {
-	return rowToOrder(getDb().prepare('SELECT * FROM orders WHERE slug = ?').get(slug));
+export async function getOrderBySlug(slug) {
+	const db = await getDb();
+	return rowToOrder(await db.one('SELECT * FROM orders WHERE slug = $1', [slug]));
 }
 
-export function listOrders({ status } = {}) {
-	const db = getDb();
+export async function listOrders({ status } = {}) {
+	const db = await getDb();
 	const rows = status
-		? db.prepare('SELECT * FROM orders WHERE status = ? ORDER BY due_date ASC, due_time ASC, id ASC').all(status)
-		: db.prepare('SELECT * FROM orders ORDER BY due_date ASC, due_time ASC, id ASC').all();
+		? await db.query('SELECT * FROM orders WHERE status = $1 ORDER BY due_date ASC, due_time ASC, id ASC', [status])
+		: await db.query('SELECT * FROM orders ORDER BY due_date ASC, due_time ASC, id ASC');
 
 	return rows.map(rowToOrder);
 }
 
-export function updateOrder(id, data) {
-	const db = getDb();
-	const current = getOrderById(id);
+export async function updateOrder(id, data) {
+	const db = await getDb();
+	const current = await getOrderById(id);
 	if (!current) {
 		return undefined;
 	}
 
 	const hasOrderItems = Array.isArray(data.orderItems);
 	const normalized = normalizeOrderInput({ ...current, ...data });
-	const updates = ORDER_COLUMNS
-		.filter((key) => Object.prototype.hasOwnProperty.call(data, key))
-		.map((key) => `${COLUMN_TO_DB[key]} = @${key}`);
+	const updates = [];
+	const updateValues = [];
+	for (const key of ORDER_COLUMNS) {
+		if (Object.prototype.hasOwnProperty.call(data, key)) {
+			updateValues.push(normalized[key]);
+			updates.push(`${COLUMN_TO_DB[key]} = $${updateValues.length}`);
+		}
+	}
 
 	const shouldRegenerateSlug = Object.prototype.hasOwnProperty.call(data, 'theme')
 		|| Object.prototype.hasOwnProperty.call(data, 'customerName');
 	if (shouldRegenerateSlug) {
-		updates.push('slug = @slug');
-		normalized.slug = generateSlug(
+		const slug = generateSlug(
 			{ theme: normalized.theme, customerName: normalized.customerName },
-			existingSlugs(db, id)
+			await existingSlugs(db, id)
 		);
+		updateValues.push(slug);
+		updates.push(`slug = $${updateValues.length}`);
 	}
 
 	if (updates.length === 0 && !hasOrderItems) {
 		return current;
 	}
 
-	const update = db.transaction(() => {
+	await db.transaction(async (transactionDb) => {
 		if (updates.length) {
-			updates.push("updated_at = datetime('now')");
-			db.prepare(`UPDATE orders SET ${updates.join(', ')} WHERE id = @id`).run({ ...normalized, id });
+			updates.push(`updated_at = ${updatedAtSql(transactionDb)}`);
+			await transactionDb.run(`UPDATE orders SET ${updates.join(', ')} WHERE id = $${updateValues.length + 1}`, [
+				...updateValues,
+				id
+			]);
 		} else {
-			db.prepare("UPDATE orders SET updated_at = datetime('now') WHERE id = ?").run(id);
+			await transactionDb.run(`UPDATE orders SET updated_at = ${updatedAtSql(transactionDb)} WHERE id = $1`, [id]);
 		}
 
 		if (hasOrderItems) {
-			replaceOrderItemsWithDb(db, id, data.orderItems);
+			await replaceOrderItemsWithDb(transactionDb, id, data.orderItems);
 		}
 	});
 
-	update();
 	return getOrderById(id);
 }
 
-export function setOrderGoogleEventId(id, googleEventId) {
+export async function setOrderGoogleEventId(id, googleEventId) {
 	return updateOrder(id, { googleEventId });
 }
 
-export function clearOrderGoogleEventIds() {
-	return getDb()
-		.prepare("UPDATE orders SET google_event_id = NULL, updated_at = datetime('now') WHERE google_event_id IS NOT NULL")
-		.run().changes;
+export async function clearOrderGoogleEventIds() {
+	const db = await getDb();
+	const result = await db.run(`UPDATE orders SET google_event_id = NULL, updated_at = ${updatedAtSql(db)} WHERE google_event_id IS NOT NULL`);
+	return result.changes;
 }
 
-export function archiveOrder(id) {
-	const db = getDb();
-	const result = db.prepare("UPDATE orders SET status = 'archived', updated_at = datetime('now') WHERE id = ?").run(id);
+export async function archiveOrder(id) {
+	const db = await getDb();
+	const result = await db.run(`UPDATE orders SET status = 'archived', updated_at = ${updatedAtSql(db)} WHERE id = $1`, [id]);
 	return result.changes ? getOrderById(id) : undefined;
 }
 
-export function deleteOrder(id) {
-	return getDb().prepare('DELETE FROM orders WHERE id = ?').run(id).changes > 0;
+export async function deleteOrder(id) {
+	const db = await getDb();
+	const result = await db.run('DELETE FROM orders WHERE id = $1', [id]);
+	return result.changes > 0;
 }
 
-export function searchArchivedOrders(query) {
+export async function searchArchivedOrders(query) {
 	const trimmedQuery = query.trim();
 	if (!trimmedQuery) {
 		return listOrders({ status: 'archived' });
 	}
 
 	const like = `%${trimmedQuery.toLowerCase()}%`;
-	const rows = getDb().prepare(`
+	const db = await getDb();
+	const rows = await db.query(`
 		SELECT DISTINCT orders.*
 		FROM orders
 		LEFT JOIN order_items ON order_items.order_id = orders.id
@@ -279,19 +322,19 @@ export function searchArchivedOrders(query) {
 		LEFT JOIN tags ON tags.id = order_tags.tag_id
 		WHERE orders.status = 'archived'
 			AND (
-				lower(coalesce(orders.customer_name, '')) LIKE @like
-				OR lower(coalesce(orders.theme, '')) LIKE @like
-				OR lower(coalesce(orders.description, '')) LIKE @like
-				OR lower(coalesce(orders.flavors, '')) LIKE @like
-				OR lower(coalesce(order_items.type, '')) LIKE @like
-				OR lower(coalesce(order_items.theme, '')) LIKE @like
-				OR lower(coalesce(order_items.flavors, '')) LIKE @like
-				OR lower(coalesce(order_items.notes, '')) LIKE @like
-				OR lower(coalesce(order_items.tier_details, '')) LIKE @like
-				OR lower(coalesce(tags.name, '')) LIKE @like
+				lower(coalesce(orders.customer_name, '')) LIKE $1
+				OR lower(coalesce(orders.theme, '')) LIKE $1
+				OR lower(coalesce(orders.description, '')) LIKE $1
+				OR lower(coalesce(orders.flavors, '')) LIKE $1
+				OR lower(coalesce(order_items.type, '')) LIKE $1
+				OR lower(coalesce(order_items.theme, '')) LIKE $1
+				OR lower(coalesce(order_items.flavors, '')) LIKE $1
+				OR lower(coalesce(order_items.notes, '')) LIKE $1
+				OR lower(coalesce(order_items.tier_details, '')) LIKE $1
+				OR lower(coalesce(tags.name, '')) LIKE $1
 			)
 		ORDER BY orders.due_date DESC, orders.id DESC
-	`).all({ like });
+	`, [like]);
 
 	return rows.map(rowToOrder);
 }

@@ -50,3 +50,44 @@ Because this is a greenfield additive implementation, rollback is a source-contr
 - Integration tests should cover representative order API flows.
 - Order item verification should cover multi-item create/update payloads, legacy-field backfill, archive search, and Calendar description formatting.
 - Type-specific item verification should cover cake, tiered cake, counted product, and custom other payload normalization.
+
+## Neon PostgreSQL Runtime Cutover
+
+### Existing Design
+
+The application originally opened a synchronous SQLite database through `better-sqlite3`, initialized `server/src/db/schema.sql`, and configured durable local storage with `DB_PATH`.
+
+### Proposed Design
+
+Use Neon PostgreSQL for Vercel when a Postgres connection string is available. Keep SQLite as a local/test fallback when no Postgres URL exists.
+
+Recognized Postgres URL variables:
+
+- `DATABASE_URL`
+- `POSTGRES_URL`
+- `POSTGRES_PRISMA_URL`
+- `POSTGRES_URL_NON_POOLING`
+
+### Classification
+
+Requires application coordination. This changes the database driver and makes persistence calls asynchronous, but it preserves table names, column names, API payloads, and the SQLite fallback.
+
+### Affected Features And Files
+
+- Orders, archive search, order items, needed items, tags, photos, recipes, order recipe snapshots, and settings all use the new async adapter.
+- Google Calendar token and calendar-id storage now awaits database reads/writes.
+- Vercel bundles both schema files with `server/src/db/schema*.sql`.
+
+### Data Transformation Required
+
+No automatic SQLite-to-Postgres data copy is included. If existing SQLite data must be preserved, export it from SQLite and import into Neon with an explicit reviewed script before relying on the Vercel deployment as the source of truth.
+
+### Rollback
+
+Remove the Postgres URL from the environment to return to SQLite fallback locally, or use source-control rollback for the adapter changes. For Vercel, rollback requires redeploying the previous source version or restoring the previous environment configuration.
+
+### Verification
+
+- Run the server test suite with no Postgres URL to verify the SQLite fallback.
+- Run the production build.
+- After Vercel env vars are attached, hit `/api/health`, then create and read a disposable order in the Vercel deployment to force schema initialization and validate Neon writes.

@@ -24,43 +24,47 @@ function rowToRecipe(row) {
 		: undefined;
 }
 
-export function listRecipes() {
-	return getDb()
-		.prepare('SELECT * FROM recipes ORDER BY lower(name) ASC, id ASC')
-		.all()
-		.map(rowToRecipe);
+export async function listRecipes() {
+	const db = await getDb();
+	const rows = await db.query('SELECT * FROM recipes ORDER BY lower(name) ASC, id ASC');
+	return rows.map(rowToRecipe);
 }
 
-export function getRecipeById(id) {
-	return rowToRecipe(getDb().prepare('SELECT * FROM recipes WHERE id = ?').get(id));
+export async function getRecipeById(id) {
+	const db = await getDb();
+	return rowToRecipe(await db.one('SELECT * FROM recipes WHERE id = $1', [id]));
 }
 
-export function createRecipe(data) {
-	const result = getDb()
-		.prepare('INSERT INTO recipes (name, ingredients, instructions) VALUES (?, ?, ?)')
-		.run(data.name, serializeIngredients(data.ingredients), data.instructions ?? null);
+export async function createRecipe(data) {
+	const db = await getDb();
+	const row = await db.one('INSERT INTO recipes (name, ingredients, instructions) VALUES ($1, $2, $3) RETURNING id', [
+		data.name,
+		serializeIngredients(data.ingredients),
+		data.instructions ?? null
+	]);
 
-	return getRecipeById(result.lastInsertRowid);
+	return getRecipeById(row.id);
 }
 
-export function updateRecipe(id, data) {
-	const current = getRecipeById(id);
+export async function updateRecipe(id, data) {
+	const current = await getRecipeById(id);
 	if (!current) {
 		return undefined;
 	}
 
-	getDb()
-		.prepare('UPDATE recipes SET name = ?, ingredients = ?, instructions = ? WHERE id = ?')
-		.run(
-			data.name ?? current.name,
-			serializeIngredients(data.ingredients ?? current.ingredients),
-			data.instructions ?? current.instructions,
-			id
-		);
+	const db = await getDb();
+	await db.run('UPDATE recipes SET name = $1, ingredients = $2, instructions = $3 WHERE id = $4', [
+		data.name ?? current.name,
+		serializeIngredients(data.ingredients ?? current.ingredients),
+		data.instructions ?? current.instructions,
+		id
+	]);
 
 	return getRecipeById(id);
 }
 
-export function deleteRecipe(id) {
-	return getDb().prepare('DELETE FROM recipes WHERE id = ?').run(id).changes > 0;
+export async function deleteRecipe(id) {
+	const db = await getDb();
+	const result = await db.run('DELETE FROM recipes WHERE id = $1', [id]);
+	return result.changes > 0;
 }

@@ -8,10 +8,14 @@ import { createApp } from '../../src/app.js';
 const TEST_DB = path.resolve('./server/tests/tmp/test-order-routes.db');
 let app;
 
-beforeEach(() => {
-	closeDb();
+beforeEach(async () => {
+	await closeDb();
 	fs.rmSync(TEST_DB, { force: true });
 	process.env.DB_PATH = TEST_DB;
+	delete process.env.DATABASE_URL;
+	delete process.env.POSTGRES_URL;
+	delete process.env.POSTGRES_PRISMA_URL;
+	delete process.env.POSTGRES_URL_NON_POOLING;
 	delete process.env.GOOGLE_CLIENT_ID;
 	delete process.env.GOOGLE_CLIENT_SECRET;
 	delete process.env.GOOGLE_REDIRECT_URI;

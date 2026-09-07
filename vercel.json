@@ -3,10 +3,11 @@
 	"framework": "vite",
 	"installCommand": "npm install --workspaces --include-workspace-root --include=dev",
 	"buildCommand": "npm install --workspaces --include-workspace-root --include=dev && npm run build --workspace=client",
+	"devCommand": "npm run dev --workspace=client -- --host 127.0.0.1 --port $PORT",
 	"outputDirectory": "client/dist",
 	"functions": {
 		"api/index.js": {
-			"includeFiles": "server/src/db/schema.sql"
+			"includeFiles": "server/src/db/schema*.sql"
 		}
 	},
 	"rewrites": [
@@ -19,7 +20,7 @@
 			"destination": "/api/index.js"
 		},
 		{
-			"source": "/(.*)",
+			"source": "/((?!api/|uploads/|src/|node_modules/|@).*)",
 			"destination": "/index.html"
 		}
 	]

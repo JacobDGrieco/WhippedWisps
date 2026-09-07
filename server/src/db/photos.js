@@ -10,28 +10,34 @@ function rowToPhoto(row) {
 	};
 }
 
-export function listPhotos(orderId) {
-	return getDb()
-		.prepare('SELECT * FROM photos WHERE order_id = ? ORDER BY sort_order ASC, id ASC')
-		.all(orderId)
-		.map(rowToPhoto);
+export async function listPhotos(orderId) {
+	const db = await getDb();
+	const rows = await db.query('SELECT * FROM photos WHERE order_id = $1 ORDER BY sort_order ASC, id ASC', [orderId]);
+	return rows.map(rowToPhoto);
 }
 
-export function getPhotoById(id) {
-	const row = getDb().prepare('SELECT * FROM photos WHERE id = ?').get(id);
+export async function getPhotoById(id) {
+	const db = await getDb();
+	const row = await db.one('SELECT * FROM photos WHERE id = $1', [id]);
 	return row ? rowToPhoto(row) : undefined;
 }
 
-export function createPhoto(orderId, filePath) {
-	const db = getDb();
-	const existingCount = db.prepare('SELECT COUNT(*) AS count FROM photos WHERE order_id = ?').get(orderId).count;
-	const result = db
-		.prepare('INSERT INTO photos (order_id, file_path, sort_order, is_cover) VALUES (?, ?, ?, ?)')
-		.run(orderId, filePath, existingCount, existingCount === 0 ? 1 : 0);
+export async function createPhoto(orderId, filePath) {
+	const db = await getDb();
+	const existingCountRow = await db.one('SELECT COUNT(*) AS count FROM photos WHERE order_id = $1', [orderId]);
+	const existingCount = Number(existingCountRow.count);
+	const row = await db.one('INSERT INTO photos (order_id, file_path, sort_order, is_cover) VALUES ($1, $2, $3, $4) RETURNING id', [
+		orderId,
+		filePath,
+		existingCount,
+		existingCount === 0
+	]);
 
-	return getPhotoById(result.lastInsertRowid);
+	return getPhotoById(row.id);
 }
 
-export function deletePhoto(id) {
-	return getDb().prepare('DELETE FROM photos WHERE id = ?').run(id).changes > 0;
+export async function deletePhoto(id) {
+	const db = await getDb();
+	const result = await db.run('DELETE FROM photos WHERE id = $1', [id]);
+	return result.changes > 0;
 }

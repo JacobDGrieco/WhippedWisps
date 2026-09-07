@@ -9,39 +9,47 @@ function rowToNeededItem(row) {
 	};
 }
 
-export function listNeededItems(orderId) {
-	return getDb()
-		.prepare('SELECT * FROM needed_items WHERE order_id = ? ORDER BY id ASC')
-		.all(orderId)
-		.map(rowToNeededItem);
+export async function listNeededItems(orderId) {
+	const db = await getDb();
+	const rows = await db.query('SELECT * FROM needed_items WHERE order_id = $1 ORDER BY id ASC', [orderId]);
+	return rows.map(rowToNeededItem);
 }
 
-export function createNeededItem(orderId, data) {
-	const result = getDb()
-		.prepare('INSERT INTO needed_items (order_id, label, done) VALUES (?, ?, ?)')
-		.run(orderId, data.label, data.done ? 1 : 0);
+export async function createNeededItem(orderId, data) {
+	const db = await getDb();
+	const row = await db.one('INSERT INTO needed_items (order_id, label, done) VALUES ($1, $2, $3) RETURNING id', [
+		orderId,
+		data.label,
+		Boolean(data.done)
+	]);
 
-	return getNeededItemById(result.lastInsertRowid);
+	return getNeededItemById(row.id);
 }
 
-export function getNeededItemById(id) {
-	const row = getDb().prepare('SELECT * FROM needed_items WHERE id = ?').get(id);
+export async function getNeededItemById(id) {
+	const db = await getDb();
+	const row = await db.one('SELECT * FROM needed_items WHERE id = $1', [id]);
 	return row ? rowToNeededItem(row) : undefined;
 }
 
-export function updateNeededItem(id, data) {
-	const current = getNeededItemById(id);
+export async function updateNeededItem(id, data) {
+	const current = await getNeededItemById(id);
 	if (!current) {
 		return undefined;
 	}
 
-	getDb()
-		.prepare('UPDATE needed_items SET label = ?, done = ? WHERE id = ?')
-		.run(data.label ?? current.label, data.done === undefined ? Number(current.done) : Number(Boolean(data.done)), id);
+	const db = await getDb();
+	await db.run('UPDATE needed_items SET label = $1, done = $2 WHERE id = $3', [
+		data.label ?? current.label,
+		data.done === undefined ? current.done : Boolean(data.done),
+		id
+	]);
 
 	return getNeededItemById(id);
 }
 
-export function deleteNeededItem(id) {
-	return getDb().prepare('DELETE FROM needed_items WHERE id = ?').run(id).changes > 0;
+export async function deleteNeededItem(id) {
+	const db = await getDb();
+	const result = await db.run('DELETE FROM needed_items WHERE id = $1', [id]);
+	return result.changes > 0;
 }

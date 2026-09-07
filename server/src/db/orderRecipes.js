@@ -26,51 +26,52 @@ function rowToOrderRecipe(row) {
 		: undefined;
 }
 
-export function listOrderRecipes(orderId) {
-	return getDb()
-		.prepare('SELECT * FROM order_recipes WHERE order_id = ? ORDER BY id ASC')
-		.all(orderId)
-		.map(rowToOrderRecipe);
+export async function listOrderRecipes(orderId) {
+	const db = await getDb();
+	const rows = await db.query('SELECT * FROM order_recipes WHERE order_id = $1 ORDER BY id ASC', [orderId]);
+	return rows.map(rowToOrderRecipe);
 }
 
-export function getOrderRecipeById(id) {
-	return rowToOrderRecipe(getDb().prepare('SELECT * FROM order_recipes WHERE id = ?').get(id));
+export async function getOrderRecipeById(id) {
+	const db = await getDb();
+	return rowToOrderRecipe(await db.one('SELECT * FROM order_recipes WHERE id = $1', [id]));
 }
 
-export function attachRecipeToOrder(orderId, recipeId) {
-	const recipe = getRecipeById(recipeId);
+export async function attachRecipeToOrder(orderId, recipeId) {
+	const recipe = await getRecipeById(recipeId);
 	if (!recipe) {
 		return undefined;
 	}
 
-	const result = getDb()
-		.prepare(`
-			INSERT INTO order_recipes (order_id, recipe_name, ingredients, instructions)
-			VALUES (?, ?, ?, ?)
-		`)
-		.run(orderId, recipe.name, serializeIngredients(recipe.ingredients), recipe.instructions ?? null);
+	const db = await getDb();
+	const row = await db.one(`
+		INSERT INTO order_recipes (order_id, recipe_name, ingredients, instructions)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`, [orderId, recipe.name, serializeIngredients(recipe.ingredients), recipe.instructions ?? null]);
 
-	return getOrderRecipeById(result.lastInsertRowid);
+	return getOrderRecipeById(row.id);
 }
 
-export function updateOrderRecipe(id, data) {
-	const current = getOrderRecipeById(id);
+export async function updateOrderRecipe(id, data) {
+	const current = await getOrderRecipeById(id);
 	if (!current) {
 		return undefined;
 	}
 
-	getDb()
-		.prepare('UPDATE order_recipes SET recipe_name = ?, ingredients = ?, instructions = ? WHERE id = ?')
-		.run(
-			data.recipeName ?? current.recipeName,
-			serializeIngredients(data.ingredients ?? current.ingredients),
-			data.instructions ?? current.instructions,
-			id
-		);
+	const db = await getDb();
+	await db.run('UPDATE order_recipes SET recipe_name = $1, ingredients = $2, instructions = $3 WHERE id = $4', [
+		data.recipeName ?? current.recipeName,
+		serializeIngredients(data.ingredients ?? current.ingredients),
+		data.instructions ?? current.instructions,
+		id
+	]);
 
 	return getOrderRecipeById(id);
 }
 
-export function deleteOrderRecipe(id) {
-	return getDb().prepare('DELETE FROM order_recipes WHERE id = ?').run(id).changes > 0;
+export async function deleteOrderRecipe(id) {
+	const db = await getDb();
+	const result = await db.run('DELETE FROM order_recipes WHERE id = $1', [id]);
+	return result.changes > 0;
 }

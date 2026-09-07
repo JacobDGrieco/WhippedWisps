@@ -4,38 +4,36 @@ function normalizeTagName(name) {
 	return String(name || '').trim().replace(/\s+/g, ' ');
 }
 
-function canonicalTagName(db, name) {
+async function canonicalTagName(db, name) {
 	const normalizedName = normalizeTagName(name);
-	const existingTag = db.prepare('SELECT name FROM tags WHERE name = ? COLLATE NOCASE').get(normalizedName);
+	const existingTag = await db.one('SELECT name FROM tags WHERE lower(name) = lower($1)', [normalizedName]);
 
 	return existingTag?.name || normalizedName;
 }
 
-export function listTags() {
-	return getDb()
-		.prepare('SELECT name FROM tags ORDER BY lower(name) ASC')
-		.all()
-		.map((row) => row.name);
+export async function listTags() {
+	const db = await getDb();
+	const rows = await db.query('SELECT name FROM tags ORDER BY lower(name) ASC');
+	return rows.map((row) => row.name);
 }
 
-export function getTagsForOrder(orderId) {
-	return getDb()
-		.prepare(`
-			SELECT tags.name
-			FROM tags
-			INNER JOIN order_tags ON order_tags.tag_id = tags.id
-			WHERE order_tags.order_id = ?
-			ORDER BY lower(tags.name) ASC
-		`)
-		.all(orderId)
-		.map((row) => row.name);
+export async function getTagsForOrder(orderId) {
+	const db = await getDb();
+	const rows = await db.query(`
+		SELECT tags.name
+		FROM tags
+		INNER JOIN order_tags ON order_tags.tag_id = tags.id
+		WHERE order_tags.order_id = $1
+		ORDER BY lower(tags.name) ASC
+	`, [orderId]);
+	return rows.map((row) => row.name);
 }
 
-export function setTagsForOrder(orderId, names) {
-	const db = getDb();
+export async function setTagsForOrder(orderId, names) {
+	const db = await getDb();
 	const seenNames = new Set();
-	const normalizedNames = (names || [])
-		.map((name) => canonicalTagName(db, name))
+	const canonicalNames = await Promise.all((names || []).map((name) => canonicalTagName(db, name)));
+	const normalizedNames = canonicalNames
 		.filter(Boolean)
 		.filter((name) => {
 			const key = name.toLowerCase();
@@ -47,18 +45,18 @@ export function setTagsForOrder(orderId, names) {
 			return true;
 		});
 
-	const applyTags = db.transaction(() => {
-		db.prepare('DELETE FROM order_tags WHERE order_id = ?').run(orderId);
+	await db.transaction(async (transactionDb) => {
+		await transactionDb.run('DELETE FROM order_tags WHERE order_id = $1', [orderId]);
 
 		for (const name of normalizedNames) {
-			const insert = db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)').run(name);
-			const tagId = insert.changes
-				? insert.lastInsertRowid
-				: db.prepare('SELECT id FROM tags WHERE name = ? COLLATE NOCASE').get(name).id;
-			db.prepare('INSERT OR IGNORE INTO order_tags (order_id, tag_id) VALUES (?, ?)').run(orderId, tagId);
+			const insertedTag = await transactionDb.one('INSERT INTO tags (name) VALUES ($1) ON CONFLICT DO NOTHING RETURNING id', [name]);
+			const tag = insertedTag || await transactionDb.one('SELECT id FROM tags WHERE lower(name) = lower($1)', [name]);
+			await transactionDb.run('INSERT INTO order_tags (order_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+				orderId,
+				tag.id
+			]);
 		}
 	});
 
-	applyTags();
 	return getTagsForOrder(orderId);
 }

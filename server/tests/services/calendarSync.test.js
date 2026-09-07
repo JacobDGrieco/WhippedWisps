@@ -41,11 +41,15 @@ vi.mock('googleapis', () => ({
 
 const TEST_DB = path.resolve('./server/tests/tmp/test-calendar-sync.db');
 
-beforeEach(() => {
+beforeEach(async () => {
 	vi.clearAllMocks();
-	closeDb();
+	await closeDb();
 	fs.rmSync(TEST_DB, { force: true });
 	process.env.DB_PATH = TEST_DB;
+	delete process.env.DATABASE_URL;
+	delete process.env.POSTGRES_URL;
+	delete process.env.POSTGRES_PRISMA_URL;
+	delete process.env.POSTGRES_URL_NON_POOLING;
 	process.env.GOOGLE_CLIENT_ID = 'client-id';
 	process.env.GOOGLE_CLIENT_SECRET = 'client-secret';
 	process.env.GOOGLE_REDIRECT_URI = 'http://localhost:3001/api/settings/calendar/callback';
@@ -60,13 +64,13 @@ beforeEach(() => {
 	googleMocks.calendarApi.events.insert.mockResolvedValue({ data: { id: 'new-event-id' } });
 	googleMocks.calendarApi.events.update.mockResolvedValue({ data: { id: 'existing-event-id' } });
 
-	setSetting('google.refreshToken', 'refresh-token');
+	await setSetting('google.refreshToken', 'refresh-token');
 });
 
 test('syncOrderToCalendar recreates an event when the saved event id is missing in Google', async () => {
-	setSetting('google.calendarId', 'valid-calendar-id');
+	await setSetting('google.calendarId', 'valid-calendar-id');
 	googleMocks.calendarApi.events.update.mockRejectedValueOnce({ status: 404, message: 'Not Found' });
-	const order = createOrder({
+	const order = await createOrder({
 		customerName: 'Jane Doe',
 		dueDate: '2026-09-04',
 		theme: 'Wedding',
@@ -83,15 +87,15 @@ test('syncOrderToCalendar recreates an event when the saved event id is missing 
 		calendarId: 'valid-calendar-id'
 	}));
 	expect(result).toEqual({ synced: true, eventId: 'new-event-id' });
-	expect(getOrderById(order.id).googleEventId).toBe('new-event-id');
+	expect((await getOrderById(order.id)).googleEventId).toBe('new-event-id');
 });
 
 test('syncOrderToCalendar refreshes a stale cached calendar id before reinserting', async () => {
-	setSetting('google.calendarId', 'stale-calendar-id');
+	await setSetting('google.calendarId', 'stale-calendar-id');
 	googleMocks.calendarApi.events.insert
 		.mockRejectedValueOnce({ status: 404, message: 'Not Found' })
 		.mockResolvedValueOnce({ data: { id: 'new-event-id' } });
-	const order = createOrder({
+	const order = await createOrder({
 		customerName: 'Jane Doe',
 		dueDate: '2026-09-04',
 		theme: 'Wedding'
@@ -106,6 +110,6 @@ test('syncOrderToCalendar refreshes a stale cached calendar id before reinsertin
 		calendarId: 'fresh-calendar-id'
 	}));
 	expect(result).toEqual({ synced: true, eventId: 'new-event-id' });
-	expect(getSetting('google.calendarId')).toBe('fresh-calendar-id');
-	expect(getOrderById(order.id).googleEventId).toBe('new-event-id');
+	expect(await getSetting('google.calendarId')).toBe('fresh-calendar-id');
+	expect((await getOrderById(order.id)).googleEventId).toBe('new-event-id');
 });
