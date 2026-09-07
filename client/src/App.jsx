@@ -13,7 +13,7 @@ export default function App() {
 				<div>
 					<h1>Whipped Wisps</h1>
 				</div>
-				<nav aria-label="Primary">
+				<nav className="primary-nav" aria-label="Primary">
 					<NavLink to="/">Schedule</NavLink>
 					<NavLink to="/archive">Archive</NavLink>
 					<NavLink to="/recipes">Recipes</NavLink>

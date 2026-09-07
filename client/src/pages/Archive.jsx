@@ -24,7 +24,10 @@ export default function Archive() {
 					<p className="eyebrow">Archive</p>
 					<h2>Completed Cakes</h2>
 				</div>
-				<input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customer, theme, flavor, tag" />
+				<label className="field archive-search">
+					<span>Search completed cakes</span>
+					<input className="search-input" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Customer, theme, flavor, or tag" />
+				</label>
 			</section>
 			{error ? <p className="alert">{error}</p> : null}
 			<div className="archive-grid">
@@ -33,7 +36,7 @@ export default function Archive() {
 					const title = displayLabel(order.theme, 'Untitled cake');
 					return (
 						<Link key={order.id} to={`/archive/${order.slug}`} className="archive-card">
-							{cover ? <img src={`/uploads/${cover.filePath}`} alt={`${title} cake`} /> : <div className="photo-placeholder">No photo</div>}
+							{cover ? <img src={`/uploads/${cover.filePath}`} alt={`${title} cake`} loading="lazy" /> : <div className="photo-placeholder">No photo</div>}
 							<div className="archive-card-meta">
 								<h3>{title}</h3>
 								<p>{order.customerName}</p>

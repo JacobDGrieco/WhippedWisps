@@ -38,7 +38,7 @@ export default function PhotoUploader({ orderId, photos, onChange }) {
 			<div className="photo-grid">
 				{photos.map((photo) => (
 					<figure key={photo.id}>
-						<img src={`/uploads/${photo.filePath}`} alt="" />
+						<img src={`/uploads/${photo.filePath}`} alt="" loading="lazy" />
 						<figcaption>{photo.isCover ? 'Cover' : 'Photo'}</figcaption>
 						<button type="button" onClick={() => removePhoto(photo.id)}>Remove</button>
 					</figure>

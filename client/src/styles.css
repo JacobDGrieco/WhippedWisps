@@ -47,6 +47,10 @@ body {
 	position: relative;
 }
 
+html {
+	overflow-x: clip;
+}
+
 body::before {
 	background-image: radial-gradient(color-mix(in oklch, var(--ww-copper) 18%, transparent) 0.8px, transparent 0.8px);
 	background-size: 18px 18px;
@@ -185,6 +189,10 @@ nav a.active {
 	color: var(--ww-surface);
 }
 
+.primary-nav {
+	min-width: 0;
+}
+
 .page-grid {
 	display: grid;
 	gap: 18px;
@@ -280,6 +288,69 @@ nav a.active {
 	min-height: clamp(126px, 11vw, 170px);
 	overflow: hidden;
 	padding: 8px;
+}
+
+.calendar-day-button {
+	align-items: center;
+	background: transparent;
+	border: 0;
+	border-radius: 6px;
+	box-shadow: none;
+	color: inherit;
+	display: flex;
+	justify-content: space-between;
+	min-height: 28px;
+	padding: 2px;
+	transform: none;
+	width: 100%;
+}
+
+.calendar-day-button:hover:not(:disabled),
+.calendar-day-button:active:not(:disabled) {
+	background: color-mix(in oklch, var(--ww-accent-soft) 42%, transparent);
+	transform: none;
+}
+
+.calendar-order-count {
+	display: none;
+}
+
+.calendar-day-agenda {
+	background: color-mix(in oklch, var(--ww-accent-faint) 72%, var(--ww-surface));
+	border: 1px solid var(--ww-border);
+	border-radius: 14px;
+	display: grid;
+	gap: 10px;
+	margin-top: 12px;
+	padding: 12px;
+}
+
+.calendar-day-agenda > p {
+	color: var(--ww-muted);
+	margin: 0;
+}
+
+.calendar-day-agenda ul {
+	display: grid;
+	gap: 8px;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.calendar-day-agenda a {
+	background: var(--ww-surface);
+	border: 1px solid var(--ww-border);
+	border-radius: 10px;
+	display: grid;
+	gap: 3px;
+	min-height: 48px;
+	padding: 9px 10px;
+}
+
+.calendar-day-agenda a span {
+	color: var(--ww-muted);
+	font-size: 0.82rem;
 }
 
 .calendar-cell.is-today {
@@ -1152,6 +1223,10 @@ textarea {
 	grid-template-columns: minmax(84px, 0.35fr) minmax(84px, 0.35fr) minmax(140px, 1fr) auto;
 }
 
+.ingredient-field {
+	min-width: 0;
+}
+
 .ingredient-row button {
 	align-self: end;
 }
@@ -1178,6 +1253,58 @@ textarea {
 
 .settings-panel {
 	max-width: 680px;
+}
+
+.recipe-modal-dialog {
+	background: transparent;
+	border: 0;
+	max-height: min(88dvh, 780px);
+	max-width: min(720px, calc(100% - 32px));
+	overflow: auto;
+	padding: 0;
+	width: 100%;
+}
+
+.recipe-modal-dialog::backdrop {
+	background: color-mix(in oklch, var(--ww-ink) 58%, transparent);
+	backdrop-filter: blur(5px);
+}
+
+.recipe-modal {
+	margin: 0;
+	width: 100%;
+}
+
+.recipe-modal-close {
+	font-size: 1.5rem;
+	line-height: 1;
+	min-width: 44px;
+	padding: 0;
+}
+
+.mobile-form-actions {
+	display: none;
+}
+
+.page-heading > *,
+.section-heading > *,
+.panel > *,
+.archive-info > *,
+.archive-card-meta,
+.recipe-card > *,
+.recipe-editor > * {
+	min-width: 0;
+}
+
+.page-heading h2,
+.archive-card h3,
+.recipe-card h3,
+.item-detail-chip dd,
+.tag-token,
+.notice,
+.alert,
+.empty-state {
+	overflow-wrap: anywhere;
 }
 
 .app-shell {
@@ -1647,6 +1774,23 @@ textarea {
 		justify-content: flex-start;
 	}
 
+	.primary-nav {
+		display: grid;
+		gap: 4px;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		overflow: visible;
+		padding: 0;
+		width: 100%;
+	}
+
+	.primary-nav a {
+		font-size: clamp(0.68rem, 2.4vw, 0.85rem);
+		min-width: 0;
+		padding-inline: 5px;
+		text-align: center;
+		white-space: nowrap;
+	}
+
 	.topbar {
 		border-radius: 16px;
 	}
@@ -1695,12 +1839,33 @@ textarea {
 		overflow-x: visible;
 	}
 
+	.order-item-fields .field,
+	.flavor-field,
+	.dimension-field,
+	.servings-field,
+	.price-field,
+	.tiers-field,
+	.theme-field,
+	.wide-field {
+		flex-basis: auto;
+		min-width: 0;
+		width: 100%;
+	}
+
 	.tier-list {
 		display: grid;
 	}
 
 	.tier-row {
 		width: 100%;
+	}
+
+	.tier-row strong {
+		justify-items: start;
+		min-height: 32px;
+		padding-inline: 2px;
+		place-content: center start;
+		writing-mode: horizontal-tb;
 	}
 
 	.reminder-days-field {
@@ -1728,15 +1893,30 @@ textarea {
 	}
 
 	.topbar h1 {
-		font-size: clamp(2.25rem, 14vw, 3.4rem);
+		font-size: clamp(1.65rem, 9vw, 2.4rem);
+		white-space: nowrap;
+	}
+
+	.topbar > div {
+		text-align: center;
 	}
 
 	.page-heading h2 {
-		font-size: clamp(2rem, 12vw, 3rem);
+		font-size: clamp(1.35rem, 6.5vw, 1.65rem);
 	}
 
-	nav a {
-		flex: 1 1 calc(50% - 8px);
+	.section-heading h2 {
+		font-size: 1rem;
+	}
+
+	.primary-nav a {
+		align-items: center;
+		display: flex;
+		font-size: clamp(0.64rem, 2.7vw, 0.78rem);
+		justify-content: center;
+		line-height: 1.1;
+		min-height: 42px;
+		padding: 8px 3px;
 		text-align: center;
 	}
 
@@ -1764,12 +1944,50 @@ textarea {
 	}
 
 	.calendar-cell {
-		min-height: 68px;
-		padding: 5px;
+		gap: 2px;
+		min-height: 48px;
+		padding: 3px;
+	}
+
+	.calendar-cell.is-selected {
+		border-color: var(--ww-accent);
+		box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--ww-accent) 28%, transparent);
+	}
+
+	.calendar-day-button {
+		min-height: 40px;
+		padding: 3px 2px;
+	}
+
+	.calendar-day-button .day-number {
+		font-size: 0.68rem;
+	}
+
+	.calendar-order-count {
+		align-items: center;
+		background: var(--ww-accent);
+		border-radius: 999px;
+		color: var(--ww-surface);
+		display: inline-flex;
+		font-size: 0.58rem;
+		font-weight: 900;
+		height: 16px;
+		justify-content: center;
+		min-width: 16px;
+		padding-inline: 3px;
+	}
+
+	.calendar-order {
+		display: none;
 	}
 
 	.archive-card {
 		aspect-ratio: 4 / 5;
+	}
+
+	.archive-grid {
+		gap: 8px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.archive-card-meta {
@@ -1810,6 +2028,112 @@ textarea {
 	}
 
 	.checklist li {
-		align-items: stretch;
+		align-items: center;
+		background: color-mix(in oklch, var(--ww-surface) 78%, var(--ww-bg));
+		border: 1px solid var(--ww-border);
+		border-radius: 12px;
+		grid-template-columns: 44px minmax(0, 1fr);
+		padding: 8px;
+	}
+
+	.checklist li > button {
+		grid-column: 1 / -1;
+	}
+
+	.ingredient-row {
+		background: color-mix(in oklch, var(--ww-surface-inset) 45%, var(--ww-surface));
+		border: 1px solid var(--ww-border);
+		border-radius: 12px;
+		gap: 10px;
+		padding: 10px;
+	}
+
+	.ingredient-row > button {
+		width: 100%;
+	}
+
+	.photo-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.archive-photo-stage img {
+		aspect-ratio: auto;
+		height: auto;
+		max-height: none;
+		object-fit: contain;
+	}
+
+	.recipe-modal-dialog {
+		max-height: calc(100dvh - 24px);
+		max-width: calc(100% - 24px);
+	}
+
+	.archive-search,
+	.search-input,
+	.settings-panel button {
+		max-width: none;
+		width: 100%;
+	}
+
+	.order-heading-actions {
+		display: none;
+	}
+
+	.order-form {
+		padding-bottom: calc(100px + env(safe-area-inset-bottom));
+	}
+
+	.mobile-form-actions {
+		background: color-mix(in oklch, var(--ww-surface) 92%, transparent);
+		border: 1px solid var(--ww-border);
+		border-radius: 16px 16px 0 0;
+		bottom: 0;
+		box-shadow: 0 -12px 30px color-mix(in oklch, var(--ww-ink) 14%, transparent);
+		display: grid;
+		gap: 8px;
+		grid-template-columns: minmax(88px, 0.45fr) minmax(0, 1fr);
+		left: 8px;
+		padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+		position: fixed;
+		right: 8px;
+		z-index: 20;
+	}
+
+	.tag-chip-input input {
+		min-width: min(150px, 100%);
+	}
+}
+
+@media (max-height: 430px) and (orientation: landscape) {
+	.app-shell {
+		padding: 10px;
+	}
+
+	.topbar {
+		gap: 10px;
+		margin-bottom: 16px;
+		padding: 10px 12px;
+	}
+
+	.topbar h1 {
+		font-size: 2rem;
+	}
+
+	.page-heading h2 {
+		font-size: 2rem;
+	}
+
+	.archive-photo-stage img,
+	.archive-photo-placeholder {
+		max-height: 70dvh;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
 	}
 }
