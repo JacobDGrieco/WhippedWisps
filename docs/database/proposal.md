@@ -44,10 +44,6 @@ The type-specific item fields are safe additive. Existing rows receive nullable 
 
 Because this is a greenfield additive implementation, rollback is a source-control rollback plus removal of any disposable local `DB_PATH` created during development.
 
-## Vercel Production Follow-Up
-
-The current SQLite schema can support local and disposable preview deployments, but it is not a durable production backend on Vercel. Before using Vercel as the production host, create a separate migration proposal for moving the tables in `server/src/db/schema.sql` to external durable storage, most likely PostgreSQL, and for moving uploaded photos to object storage.
-
 ## Verification
 
 - Unit tests should cover schema creation, CRUD, slug uniqueness, recipe copy-on-attach, Calendar payload construction, and search.

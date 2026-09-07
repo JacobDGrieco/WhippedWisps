@@ -57,33 +57,31 @@ export default function RecipeAttach({ orderId, orderRecipes, onChange }) {
 						<div className="ingredient-table">
 							{recipe.ingredients.map((ingredient, index) => (
 								<div key={`${recipe.id}-${index}`} className="ingredient-row">
-									<input
-										placeholder="Quantity"
+									<label className="field ingredient-field"><span>Quantity</span><input
+										inputMode="decimal"
 										value={ingredient.quantity}
 										onChange={(event) => {
 											const ingredients = [...recipe.ingredients];
 											ingredients[index] = { ...ingredient, quantity: event.target.value };
 											updateAttachedRecipe(recipe, { ingredients });
 										}}
-									/>
-									<input
-										placeholder="Unit"
+									/></label>
+									<label className="field ingredient-field"><span>Unit</span><input
 										value={ingredient.unit}
 										onChange={(event) => {
 											const ingredients = [...recipe.ingredients];
 											ingredients[index] = { ...ingredient, unit: event.target.value };
 											updateAttachedRecipe(recipe, { ingredients });
 										}}
-									/>
-									<input
-										placeholder="Item"
+									/></label>
+									<label className="field ingredient-field"><span>Item</span><input
 										value={ingredient.item}
 										onChange={(event) => {
 											const ingredients = [...recipe.ingredients];
 											ingredients[index] = { ...ingredient, item: event.target.value };
 											updateAttachedRecipe(recipe, { ingredients });
 										}}
-									/>
+									/></label>
 								</div>
 							))}
 						</div>

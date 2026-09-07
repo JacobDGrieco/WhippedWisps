@@ -104,7 +104,7 @@ function ArchivePhotoGallery({ photos }) {
 							onClick={() => setSelectedIndex(index)}
 							aria-label={`Show photo ${index + 1}`}
 						>
-							<img src={`/uploads/${photo.filePath}`} alt="" />
+							<img src={`/uploads/${photo.filePath}`} alt="" loading="lazy" />
 						</button>
 					))}
 				</div>

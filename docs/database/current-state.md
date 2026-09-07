@@ -24,7 +24,6 @@ Whipped Wisps is a greenfield personal-use application. Before this implementati
 
 - There is no existing data to migrate.
 - Tailscale is the intended access gate; the app intentionally has no login layer.
-- Vercel can only use the SQLite fallback as disposable preview storage. A production Vercel deployment needs durable external storage because `/tmp` data can be lost or split across function instances.
 - Cascading deletes are acceptable for order-owned records because this is a single-user CMS and deletes are explicit.
 - Date and time values are stored as text to match browser form inputs and Google Calendar payload construction.
 - Legacy item summary columns still exist on `orders` for compatibility; new writes use `order_items`.

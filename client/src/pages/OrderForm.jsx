@@ -431,7 +431,7 @@ export default function OrderForm() {
 					<p className="eyebrow">{isNew ? 'New order' : order.status}</p>
 					<h2>{isNew ? 'Create Order' : getPrimaryOrderTheme(order) || 'Order Detail'}</h2>
 				</div>
-				<div className="button-row">
+				<div className="button-row order-heading-actions">
 					<button type="button" className="secondary-action" onClick={handleBack}>Back</button>
 					<button type="submit" className="primary-action" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</button>
 				</div>
@@ -447,7 +447,7 @@ export default function OrderForm() {
 				<div className="form-row two-fields">
 					<label className="field">
 						<RequiredLabel required>Customer Name</RequiredLabel>
-						<input required value={order.customerName || ''} onChange={(event) => updateField('customerName', event.target.value)} />
+						<input required autoComplete="name" value={order.customerName || ''} onChange={(event) => updateField('customerName', event.target.value)} />
 					</label>
 					<label className="field">
 						<span>Customer Contact</span>
@@ -494,7 +494,7 @@ export default function OrderForm() {
 						<>
 							<label className="field">
 								<span>Delivery Address</span>
-								<input value={order.deliveryAddress || ''} onChange={(event) => updateField('deliveryAddress', event.target.value)} />
+								<input autoComplete="street-address" value={order.deliveryAddress || ''} onChange={(event) => updateField('deliveryAddress', event.target.value)} />
 							</label>
 							<label className="field">
 								<span>Window Start</span>
@@ -527,7 +527,7 @@ export default function OrderForm() {
 								{item.type === 'tiered cake' ? (
 									<label className="field tiers-field">
 										<RequiredLabel required={index === 0}>Tiers</RequiredLabel>
-										<input required={index === 0} type="number" min="0" step="1" value={item.tierCount ?? ''} onChange={(event) => updateTierCount(index, event.target.value)} />
+										<input required={index === 0} type="number" min="0" step="1" inputMode="numeric" value={item.tierCount ?? ''} onChange={(event) => updateTierCount(index, event.target.value)} />
 									</label>
 								) : null}
 								{item.type !== 'other' && item.type !== 'tiered cake' ? (
@@ -571,7 +571,7 @@ export default function OrderForm() {
 								{COUNTED_ITEM_TYPES.has(item.type) ? (
 									<label className="field servings-field">
 										<RequiredLabel required={index === 0}>Count</RequiredLabel>
-										<input required={index === 0} type="number" min="0" step="1" value={item.count ?? ''} onChange={(event) => updateOrderItem(index, 'count', event.target.value)} />
+										<input required={index === 0} type="number" min="0" step="1" inputMode="numeric" value={item.count ?? ''} onChange={(event) => updateOrderItem(index, 'count', event.target.value)} />
 									</label>
 								) : null}
 								{item.type !== 'other' ? (
@@ -683,6 +683,10 @@ export default function OrderForm() {
 					</section>
 				</>
 			) : null}
+			<div className="mobile-form-actions" aria-label="Order form actions">
+				<button type="button" className="secondary-action" onClick={handleBack}>Back</button>
+				<button type="submit" className="primary-action" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Order'}</button>
+			</div>
 		</form>
 	);
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as api from '../api/client.js';
 
 function emptyIngredient() {
@@ -15,6 +15,8 @@ export default function Recipes() {
 	const [recipes, setRecipes] = useState([]);
 	const [draft, setDraft] = useState(EMPTY_RECIPE);
 	const [error, setError] = useState('');
+	const [isCreating, setIsCreating] = useState(false);
+	const modalRef = useRef(null);
 
 	useEffect(() => {
 		api.fetchRecipes().then(setRecipes).catch((err) => setError(err.message));
@@ -40,7 +42,17 @@ export default function Recipes() {
 		const created = await api.createRecipe(draft);
 		setRecipes((current) => [...current, created]);
 		setDraft(EMPTY_RECIPE);
+		setIsCreating(false);
 	}
+
+	useEffect(() => {
+		if (!isCreating) {
+			return undefined;
+		}
+
+		modalRef.current?.showModal();
+		return () => modalRef.current?.close();
+	}, [isCreating]);
 
 	async function removeRecipe(id) {
 		await api.deleteRecipe(id);
@@ -54,12 +66,12 @@ export default function Recipes() {
 					<p className="eyebrow">Templates</p>
 					<h2>Recipe Library</h2>
 				</div>
+				<button type="button" className="primary-action" onClick={() => setIsCreating(true)}>New Recipe</button>
 			</section>
 			{error ? <p className="alert">{error}</p> : null}
-			<div className="two-column">
-				<section className="panel">
+			<section className="panel">
 					<div className="section-heading">
-						<h2>Saved Recipes</h2>
+						<h2>Completed Recipes</h2>
 					</div>
 					<ul className="recipe-list">
 						{recipes.map((recipe) => (
@@ -70,10 +82,17 @@ export default function Recipes() {
 							</li>
 						))}
 					</ul>
-				</section>
-				<form className="panel form-grid single-column" onSubmit={createDraftRecipe}>
+			</section>
+			{isCreating ? (
+				<dialog ref={modalRef} className="recipe-modal-dialog" aria-labelledby="new-recipe-title" onCancel={() => setIsCreating(false)} onClick={(event) => {
+					if (event.target === event.currentTarget) {
+						setIsCreating(false);
+					}
+				}}>
+				<form className="panel form-grid single-column recipe-modal" onSubmit={createDraftRecipe}>
 					<div className="section-heading full-span">
-						<h2>New Recipe</h2>
+						<h2 id="new-recipe-title">New Recipe</h2>
+						<button type="button" className="recipe-modal-close" aria-label="Close new recipe" onClick={() => setIsCreating(false)}>×</button>
 					</div>
 					<label className="field full-span">
 						<span>Name</span>
@@ -82,9 +101,9 @@ export default function Recipes() {
 					<div className="ingredient-table full-span">
 						{draft.ingredients.map((ingredient, index) => (
 							<div key={index} className="ingredient-row">
-								<input placeholder="Quantity" value={ingredient.quantity} onChange={(event) => updateIngredient(index, 'quantity', event.target.value)} />
-								<input placeholder="Unit" value={ingredient.unit} onChange={(event) => updateIngredient(index, 'unit', event.target.value)} />
-								<input placeholder="Item" value={ingredient.item} onChange={(event) => updateIngredient(index, 'item', event.target.value)} />
+								<label className="field ingredient-field"><span>Quantity</span><input inputMode="decimal" value={ingredient.quantity} onChange={(event) => updateIngredient(index, 'quantity', event.target.value)} /></label>
+								<label className="field ingredient-field"><span>Unit</span><input value={ingredient.unit} onChange={(event) => updateIngredient(index, 'unit', event.target.value)} /></label>
+								<label className="field ingredient-field"><span>Item</span><input value={ingredient.item} onChange={(event) => updateIngredient(index, 'item', event.target.value)} /></label>
 								{index > 0 ? (
 									<button type="button" className="text-danger" onClick={() => removeIngredient(index)}>
 										Remove
@@ -102,7 +121,8 @@ export default function Recipes() {
 					</label>
 					<button type="submit" className="primary-action">Save Recipe</button>
 				</form>
-			</div>
+				</dialog>
+			) : null}
 		</div>
 	);
 }

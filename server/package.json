@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "npm install --workspace=client && npm run build --workspace=client",
-    "dev": "node --no-deprecation --watch src/server.js",
+    "dev": "node --no-deprecation src/server.js",
     "start": "node --no-deprecation src/server.js",
     "test": "vitest run"
   },
