@@ -16,7 +16,7 @@ Whipped Wisps is a greenfield personal-use application. Before this implementati
 - `order_items`: repeatable product lines owned by an order, covering type, theme, dimensions, servings, flavors, count, price, custom notes, and tier details.
 - `needed_items`: checklist rows owned by an order.
 - `tags` and `order_tags`: freeform many-to-many labels for search and categorization.
-- `photos`: uploaded image metadata owned by an order.
+- `photos`: uploaded image metadata owned by an order, split into `reference` and `final` image roles.
 - `recipes`: reusable recipe templates.
 - `order_recipes`: editable per-order recipe snapshots copied from templates.
 - `settings`: server-side key/value store for Calendar OAuth tokens and calendar metadata.
@@ -34,3 +34,4 @@ Whipped Wisps is a greenfield personal-use application. Before this implementati
 - Money values remain floating-point values for this personal app (`REAL` in SQLite, `DOUBLE PRECISION` in Postgres); if bookkeeping accuracy becomes a requirement, prices should move to integer cents.
 - The Postgres schema uses `DOUBLE PRECISION` for money fields to preserve current app behavior during the database cutover; changing to integer cents should be a separate migration.
 - Uploaded image files are still filesystem-backed. On Vercel, `/tmp` uploads are ephemeral unless a durable object storage path is added separately.
+- Archive cards and galleries should use final images only; reference images are retained with the order for production reference.

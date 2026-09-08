@@ -91,3 +91,42 @@ Remove the Postgres URL from the environment to return to SQLite fallback locall
 - Run the server test suite with no Postgres URL to verify the SQLite fallback.
 - Run the production build.
 - After Vercel env vars are attached, hit `/api/health`, then create and read a disposable order in the Vercel deployment to force schema initialization and validate Neon writes.
+
+## Photo Roles And Order Production Inputs
+
+### Existing Design
+
+Photos are stored as order-owned rows with `file_path`, `sort_order`, and `is_cover`. The application cannot tell whether an upload is a reference image or a final cake image, so archive pages use whichever photo is cover or first.
+
+Recipe snapshots and photos are created through order-specific endpoints, so the new-order screen cannot persist them until an order ID exists.
+
+### Proposed Design
+
+Add `photos.image_type` with supported values `reference` and `final`; existing photos default to `final`. Use final images for archive cards, archive galleries, and recipe-card imagery. Keep reference images available from the order edit workflow for production reference.
+
+Expose a production section in the order form for both new and existing orders:
+
+- Reference Images
+- Final Images
+- Recipes, with saved-template linking and simple saved-template creation
+
+For new orders, queue selected image files and linked recipes in client state, create the order, then upload queued images and attach recipes to the new order ID.
+
+### Classification
+
+Safe additive with application coordination. The new column has a default, existing photos remain final images, and API payloads gain `imageType` without removing existing fields.
+
+### Data Transformation Required
+
+No manual data transformation is required for existing rows. Existing photos are treated as final images.
+
+### Rollback
+
+Source-control rollback restores the old UI and API behavior. The extra `photos.image_type` column can remain unused if the app is rolled back.
+
+### Verification
+
+- Verify schema creation includes `photos.image_type`.
+- Verify creating reference and final photos returns the expected role, and only final photos become cover candidates.
+- Verify archive pages filter to final images.
+- Verify new-order create applies queued final/reference images and queued recipe links after the order is created.

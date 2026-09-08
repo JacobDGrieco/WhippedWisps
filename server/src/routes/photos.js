@@ -74,7 +74,7 @@ router.post('/', asyncHandler(requireExistingOrder), upload.single('photo'), asy
 	}
 
 	const relativePath = path.join(String(req.params.orderId), req.file.filename).replaceAll('\\', '/');
-	res.status(201).json(await createPhoto(req.params.orderId, relativePath));
+	res.status(201).json(await createPhoto(req.params.orderId, relativePath, req.body.imageType));
 }));
 
 router.delete('/:photoId', asyncHandler(async (req, res) => {

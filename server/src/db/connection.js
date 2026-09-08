@@ -18,6 +18,10 @@ const ORDER_ITEM_COLUMNS = [
 	['tier_details', "TEXT NOT NULL DEFAULT '[]'"]
 ];
 
+const PHOTO_COLUMNS = [
+	['image_type', "TEXT NOT NULL DEFAULT 'final' CHECK (image_type IN ('reference', 'final'))"]
+];
+
 function getPostgresConnectionString() {
 	for (const envKey of POSTGRES_URL_ENV_KEYS) {
 		if (process.env[envKey]) {
@@ -39,6 +43,21 @@ function ensureOrderItemColumns(database) {
 	for (const [column, definition] of ORDER_ITEM_COLUMNS) {
 		if (!columns.has(column)) {
 			database.exec(`ALTER TABLE order_items ADD COLUMN ${column} ${definition}`);
+		}
+	}
+}
+
+function ensurePhotoColumns(database) {
+	const columns = new Set(
+		database
+			.prepare('PRAGMA table_info(photos)')
+			.all()
+			.map((column) => column.name)
+	);
+
+	for (const [column, definition] of PHOTO_COLUMNS) {
+		if (!columns.has(column)) {
+			database.exec(`ALTER TABLE photos ADD COLUMN ${column} ${definition}`);
 		}
 	}
 }
@@ -107,6 +126,7 @@ async function createSqliteDatabase() {
 	database.pragma('foreign_keys = ON');
 	database.exec(fs.readFileSync(path.join(moduleDir, 'schema.sql'), 'utf8'));
 	ensureOrderItemColumns(database);
+	ensurePhotoColumns(database);
 
 	return createSqliteAdapter(database);
 }

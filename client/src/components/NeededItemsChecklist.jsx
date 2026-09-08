@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as api from '../api/client.js';
 
-export default function NeededItemsChecklist({ orderId, items, onChange }) {
+export default function NeededItemsChecklist({ orderId, items, onChange, embedded = false }) {
 	const [label, setLabel] = useState('');
 
 	async function addItem() {
@@ -25,7 +25,7 @@ export default function NeededItemsChecklist({ orderId, items, onChange }) {
 	}
 
 	return (
-		<section className="panel">
+		<section className={embedded ? 'embedded-panel' : 'panel'}>
 			<div className="section-heading">
 				<h2>Needed Items</h2>
 			</div>

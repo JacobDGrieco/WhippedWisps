@@ -32,7 +32,8 @@ export default function Archive() {
 			{error ? <p className="alert">{error}</p> : null}
 			<div className="archive-grid">
 				{orders.map((order) => {
-					const cover = (order.photos || []).find((photo) => photo.isCover) || order.photos?.[0];
+					const finalPhotos = (order.photos || []).filter((photo) => (photo.imageType || 'final') === 'final');
+					const cover = finalPhotos.find((photo) => photo.isCover) || finalPhotos[0];
 					const title = displayLabel(order.theme, 'Untitled cake');
 					return (
 						<Link key={order.id} to={`/archive/${order.slug}`} className="archive-card">

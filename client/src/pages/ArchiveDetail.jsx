@@ -114,7 +114,8 @@ function ArchivePhotoGallery({ photos }) {
 }
 
 function getCoverPhoto(photos = []) {
-	return photos.find((photo) => photo.isCover) || photos[0];
+	const finalPhotos = photos.filter((photo) => (photo.imageType || 'final') === 'final');
+	return finalPhotos.find((photo) => photo.isCover) || finalPhotos[0];
 }
 
 function getInstructionSteps(instructions) {
@@ -141,6 +142,7 @@ export default function ArchiveDetail() {
 		return <p className="empty-state">Loading...</p>;
 	}
 
+	const finalPhotos = (order.photos || []).filter((photo) => (photo.imageType || 'final') === 'final');
 	const coverPhoto = getCoverPhoto(order.photos);
 
 	return (
@@ -153,7 +155,7 @@ export default function ArchiveDetail() {
 				<Link className="secondary-action" to={`/orders/${order.id}`}>Edit</Link>
 			</section>
 			<section className="archive-detail-top">
-				<ArchivePhotoGallery photos={order.photos || []} />
+				<ArchivePhotoGallery photos={finalPhotos} />
 				<aside className="archive-info">
 					<p className="archive-info-primary"><strong>{order.customerName}</strong><span>{order.dueDate}</span></p>
 					<p><strong>Description</strong><span>{order.description || 'No description'}</span></p>

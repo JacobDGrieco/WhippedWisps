@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS photos (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
 	file_path TEXT NOT NULL,
+	image_type TEXT NOT NULL DEFAULT 'final' CHECK (image_type IN ('reference', 'final')),
 	sort_order INTEGER NOT NULL DEFAULT 0,
 	is_cover INTEGER NOT NULL DEFAULT 0
 );

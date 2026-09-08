@@ -12,7 +12,7 @@ const COUNTED_ITEM_TYPES = new Set(['cupcakes', 'cake pops', 'cookies']);
 const COMMON_DIMENSIONS = ['4"', '6"', '8"', '10"', '12"', '1/4 sheet', '1/2 sheet', 'full sheet'];
 const COMMON_FLAVORS = ['vanilla', 'chocolate', 'chocolate chip', 'red velvet', 'funfetti', 'strawberry', 'lemon', 'marble', 'carrot', 'cookies and cream', 'almond', 'coconut', 'spice'];
 const MINUTES_PER_DAY = 1440;
-const DEFAULT_REMINDER_DAYS = 2;
+const DEFAULT_REMINDER_DAYS = 5;
 const DEFAULT_REMINDER_OFFSETS = [DEFAULT_REMINDER_DAYS * MINUTES_PER_DAY];
 
 function getTodayDateInputValue() {
@@ -208,6 +208,8 @@ export default function OrderForm() {
 	const [error, setError] = useState('');
 	const [notice, setNotice] = useState('');
 	const [isSaving, setIsSaving] = useState(false);
+	const [pendingPhotos, setPendingPhotos] = useState({ reference: [], final: [] });
+	const [pendingRecipeIds, setPendingRecipeIds] = useState([]);
 	const [tagSuggestions, setTagSuggestions] = useState([]);
 	const [themeSuggestions, setThemeSuggestions] = useState([]);
 	const lockedTags = useMemo(() => getAutomaticOrderTags(order), [order]);
@@ -223,6 +225,8 @@ export default function OrderForm() {
 	useEffect(() => {
 		if (isNew) {
 			setOrder({ ...EMPTY_ORDER, orderDate: getTodayDateInputValue(), orderItems: [createBlankOrderItem()] });
+			setPendingPhotos({ reference: [], final: [] });
+			setPendingRecipeIds([]);
 			return;
 		}
 
@@ -245,6 +249,10 @@ export default function OrderForm() {
 
 	function updateField(field, value) {
 		setOrder((current) => ({ ...current, [field]: value }));
+	}
+
+	function updatePendingPhotos(imageType, files) {
+		setPendingPhotos((current) => ({ ...current, [imageType]: files }));
 	}
 
 	function updateTags(tags) {
@@ -343,6 +351,14 @@ export default function OrderForm() {
 		});
 	}
 
+	async function saveQueuedProduction(orderId) {
+		await Promise.all([
+			...pendingPhotos.reference.map((file) => api.uploadPhoto(orderId, file, 'reference')),
+			...pendingPhotos.final.map((file) => api.uploadPhoto(orderId, file, 'final')),
+			...pendingRecipeIds.map((recipeId) => api.attachRecipe(orderId, Number(recipeId)))
+		]);
+	}
+
 	async function handleSubmit(event) {
 		event.preventDefault();
 		setIsSaving(true);
@@ -380,17 +396,24 @@ export default function OrderForm() {
 				tags: mergeTagSuggestions(order.tags, lockedTags)
 			};
 			const saved = isNew ? await api.createOrder(payload) : await api.updateOrder(id, payload);
+			if (isNew) {
+				await saveQueuedProduction(saved.id);
+			}
+
+			const savedOrder = isNew ? await api.fetchOrder(saved.id) : saved;
 			if (saved.calendarSyncError) {
 				setNotice(saved.calendarSyncError);
 			}
 
-			setTagSuggestions((current) => mergeTagSuggestions(current, saved.tags));
-			setThemeSuggestions((current) => mergeTagSuggestions(current, getOrderThemes(saved)));
-			setOrder({ ...EMPTY_ORDER, ...saved, orderItems: normalizeOrderItems(saved) });
+			setTagSuggestions((current) => mergeTagSuggestions(current, savedOrder.tags));
+			setThemeSuggestions((current) => mergeTagSuggestions(current, getOrderThemes(savedOrder)));
+			setPendingPhotos({ reference: [], final: [] });
+			setPendingRecipeIds([]);
+			setOrder({ ...EMPTY_ORDER, ...savedOrder, orderItems: normalizeOrderItems(savedOrder) });
 			if (isNew) {
 				navigate('/', { replace: true });
-			} else if (saved.status === 'archived') {
-				navigate(`/archive/${saved.slug}`, { replace: true });
+			} else if (savedOrder.status === 'archived') {
+				navigate(`/archive/${savedOrder.slug}`, { replace: true });
 			}
 		} catch (err) {
 			setError(err.message);
@@ -433,7 +456,7 @@ export default function OrderForm() {
 				</div>
 				<div className="button-row order-heading-actions">
 					<button type="button" className="secondary-action" onClick={handleBack}>Back</button>
-					<button type="submit" className="primary-action" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</button>
+					<button type="submit" className="primary-action" disabled={isSaving}>{isSaving ? 'Creating...' : 'Create'}</button>
 				</div>
 			</section>
 
@@ -555,9 +578,8 @@ export default function OrderForm() {
 								{['cake', 'tiered cake'].includes(item.type) ? (
 									<>
 										<label className="field servings-field">
-											<RequiredLabel required={index === 0}>Servings</RequiredLabel>
+											<span>Servings</span>
 											<input
-												required={index === 0}
 												type="number"
 												min="0"
 												step="1"
@@ -627,6 +649,50 @@ export default function OrderForm() {
 				</div>
 			</section>
 
+			<section className="panel order-production-panel form-section form-section-production">
+				<div className="section-heading">
+					<h2>Production Details</h2>
+				</div>
+				<div className="production-grid">
+					{!isNew ? (
+						<NeededItemsChecklist
+							orderId={id}
+							items={order.neededItems || []}
+							embedded
+							onChange={(neededItems) => updateField('neededItems', neededItems)}
+						/>
+					) : null}
+					<PhotoUploader
+						orderId={isNew ? undefined : id}
+						photos={order.photos || []}
+						imageType="reference"
+						title="Reference Images"
+						pendingFiles={pendingPhotos.reference}
+						embedded
+						onPendingChange={(files) => updatePendingPhotos('reference', files)}
+						onChange={(photos) => updateField('photos', photos)}
+					/>
+					<PhotoUploader
+						orderId={isNew ? undefined : id}
+						photos={order.photos || []}
+						imageType="final"
+						title="Final Images"
+						pendingFiles={pendingPhotos.final}
+						embedded
+						onPendingChange={(files) => updatePendingPhotos('final', files)}
+						onChange={(photos) => updateField('photos', photos)}
+					/>
+					<RecipeAttach
+						orderId={isNew ? undefined : id}
+						orderRecipes={order.orderRecipes || []}
+						pendingRecipeIds={pendingRecipeIds}
+						embedded
+						onPendingRecipeIdsChange={setPendingRecipeIds}
+						onChange={(orderRecipes) => updateField('orderRecipes', orderRecipes)}
+					/>
+				</div>
+			</section>
+
 			<section className="panel order-notes-panel form-section form-section-notes">
 				<div className="section-heading">
 					<h2>Order Notes</h2>
@@ -657,23 +723,6 @@ export default function OrderForm() {
 
 			{!isNew ? (
 				<>
-					<div className="management-grid">
-						<NeededItemsChecklist
-							orderId={id}
-							items={order.neededItems || []}
-							onChange={(neededItems) => updateField('neededItems', neededItems)}
-						/>
-						<PhotoUploader
-							orderId={id}
-							photos={order.photos || []}
-							onChange={(photos) => updateField('photos', photos)}
-						/>
-					</div>
-					<RecipeAttach
-						orderId={id}
-						orderRecipes={order.orderRecipes || []}
-						onChange={(orderRecipes) => updateField('orderRecipes', orderRecipes)}
-					/>
 					<section className="danger-zone">
 						<div className="button-row">
 							{order.status !== 'archived' ? <button type="button" onClick={handleArchive}>Mark Complete and Archive</button> : null}
@@ -683,9 +732,11 @@ export default function OrderForm() {
 					</section>
 				</>
 			) : null}
+			<div className="bottom-form-actions">
+				<button type="submit" className="primary-action" disabled={isSaving}>{isSaving ? 'Creating...' : isNew ? 'Create' : 'Save Order'}</button>
+			</div>
 			<div className="mobile-form-actions" aria-label="Order form actions">
-				<button type="button" className="secondary-action" onClick={handleBack}>Back</button>
-				<button type="submit" className="primary-action" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Order'}</button>
+				<button type="submit" className="primary-action" disabled={isSaving}>{isSaving ? 'Creating......' : 'Create'}</button>
 			</div>
 		</form>
 	);

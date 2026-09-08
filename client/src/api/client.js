@@ -77,9 +77,10 @@ export function deleteNeededItem(orderId, itemId) {
 	return request(`/api/orders/${orderId}/needed-items/${itemId}`, { method: 'DELETE' });
 }
 
-export function uploadPhoto(orderId, file) {
+export function uploadPhoto(orderId, file, imageType = 'final') {
 	const formData = new FormData();
 	formData.append('photo', file);
+	formData.append('imageType', imageType);
 	return request(`/api/orders/${orderId}/photos`, {
 		method: 'POST',
 		body: formData

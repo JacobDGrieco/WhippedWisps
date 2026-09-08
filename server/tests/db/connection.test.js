@@ -28,4 +28,8 @@ test('getDb creates the database file and applies schema', async () => {
 	const itemColumns = (await db.query('PRAGMA table_info(order_items)'))
 		.map((column) => column.name);
 	expect(itemColumns).toEqual(expect.arrayContaining(['theme', 'count', 'notes', 'tier_count', 'tier_details']));
+
+	const photoColumns = (await db.query('PRAGMA table_info(photos)'))
+		.map((column) => column.name);
+	expect(photoColumns).toContain('image_type');
 });
